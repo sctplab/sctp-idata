@@ -493,7 +493,8 @@ typedef struct rtentry	sctp_rtentry_t;
  * It might be best to implement multi-FIB support for both v4 and v6 indepedent
  * of VRFs and leave those to a real MPLS stack.
  */
-#define SCTP_RTALLOC(ro, vrf_id) rtalloc_ign((struct route *)ro, 0UL)
+#define SCTP_RTALLOC(ro, vrf_id, fibnum) \
+	rtalloc_ign_fib((struct route *)ro, 0UL, fibnum)
 
 /* Future zero copy wakeup/send  function */
 #define SCTP_ZERO_COPY_EVENT(inp, so)
