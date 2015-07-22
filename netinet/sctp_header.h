@@ -167,10 +167,12 @@ struct sctp_data_chunk {
 struct sctp_ndata {
 	uint32_t tsn;
 	uint16_t stream_id;
-	uint16_t stream_sequence;
-	uint32_t protocol_id;
-	uint32_t msg_id;	/* Fragment Index */
-	uint32_t fsn;		/* Fragment Sequence Number */
+	uint16_t reserved;	/* Where does the SSN go? */
+	uint32_t msg_id;
+	union {
+		uint32_t protocol_id;
+		uint32_t fsn;		/* Fragment Sequence Number */
+	};
 	/* user data follows */
 } SCTP_PACKED;
 

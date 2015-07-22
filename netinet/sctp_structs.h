@@ -436,7 +436,7 @@ struct sctp_nets {
 
 struct sctp_data_chunkrec {
 	uint32_t TSN_seq;	/* the TSN of this transmit */
-	uint16_t stream_seq;	/* the stream sequence number of this transmit */
+	uint32_t stream_seq;	/* the stream sequence number of this transmit */
 	uint16_t stream_number;	/* the stream number of this guy */
 	uint32_t payloadtype;
 	uint32_t context;	/* from send */
@@ -667,8 +667,8 @@ struct sctp_stream_out {
 	uint32_t abandoned_unsent[1];
 	uint32_t abandoned_sent[1];
 #endif
+	uint32_t next_sequence_send;	/* next one I expect to send out */
 	uint16_t stream_no;
-	uint16_t next_sequence_send;	/* next one I expect to send out */
 	uint8_t last_msg_incomplete;
 	uint8_t state;
 };

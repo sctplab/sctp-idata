@@ -7994,7 +7994,7 @@ re_look:
 		dchkh->ch.chunk_type = SCTP_DATA;
 		dchkh->ch.chunk_flags = chk->rec.data.rcv_flags;
 		dchkh->dp.tsn = htonl(chk->rec.data.TSN_seq);
-		dchkh->dp.stream_id = htons(strq->stream_no);
+		dchkh->dp.stream_id = htons((strq->stream_no & 0x0000ffff));
 		dchkh->dp.stream_sequence = htons(chk->rec.data.stream_seq);
 		dchkh->dp.protocol_id = chk->rec.data.payloadtype;
 		dchkh->ch.chunk_length = htons(chk->send_size);
@@ -8003,10 +8003,12 @@ re_look:
 		ndchkh->ch.chunk_flags = chk->rec.data.rcv_flags;
 		ndchkh->dp.tsn = htonl(chk->rec.data.TSN_seq);
 		ndchkh->dp.stream_id = htons(strq->stream_no);
-		ndchkh->dp.stream_sequence = htons(chk->rec.data.stream_seq);
-		ndchkh->dp.protocol_id = chk->rec.data.payloadtype;
-		ndchkh->dp.msg_id = htonl(sp->msg_id);
-		ndchkh->dp.fsn = htonl(sp->fsn);
+		/* WHAT DO WE DO HERE??? */
+		ndchkh->dp.msg_id = htonl(chk->rec.data.stream_seq);
+		if (sp->fsn == 0) 
+			ndchkh->dp.protocol_id = chk->rec.data.payloadtype;
+		else 
+			ndchkh->dp.fsn = htonl(sp->fsn);
 		sp->fsn++;
 		ndchkh->ch.chunk_length = htons(chk->send_size);
 	}
