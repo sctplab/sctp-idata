@@ -413,7 +413,7 @@ void sctp_ctlinput(int, struct sockaddr *, void *);
 int sctp_ctloutput(struct socket *, struct sockopt *);
 #ifdef INET
 void sctp_input_with_port(struct mbuf *, int, uint16_t);
-#if defined(__FreeBSD__) && __FreeBSD_version >= 1100020  
+#if defined(__FreeBSD__) && __FreeBSD_version >= 1100020
 int sctp_input(struct mbuf **, int *, int);
 #else
 void sctp_input(struct mbuf *, int);

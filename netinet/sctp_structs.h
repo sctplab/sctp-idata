@@ -447,6 +447,7 @@ struct sctp_data_chunkrec {
 	 */
 	uint32_t fast_retran_tsn;	/* sending_seq at the time of FR */
 	struct timeval timetodrop;	/* time we drop it from queue */
+	uint32_t fsn_num;		/* Fragment Sequence Number */
 	uint8_t doing_fast_retransmit;
 	uint8_t rcv_flags;	/* flags pulled from data chunk on inbound for
 				 * outbound holds sending flags for PR-SCTP.
@@ -516,8 +517,11 @@ struct sctp_queued_to_read {	/* sinfo structure Pluse more */
 	uint32_t sinfo_cumtsn;	/* Use this in reassembly as last TSN */
 	sctp_assoc_t sinfo_assoc_id;	/* our assoc id */
 	/* Non sinfo stuff */
+	uint32_t msg_id;	/* Fragment Index */
 	uint32_t length;	/* length of data */
 	uint32_t held_length;	/* length held in sb */
+	uint32_t top_fsn;	/* Highest FSN in queue */
+	uint32_t fsn_included;  /* Highest FSN in *data portion */
 	struct sctp_nets *whoFrom;	/* where it came from */
 	struct mbuf *data;	/* front of the mbuf chain of data with
 				 * PKT_HDR */
@@ -525,12 +529,18 @@ struct sctp_queued_to_read {	/* sinfo structure Pluse more */
 	struct mbuf *aux_data;  /* used to hold/cache  control if o/s does not take it from us */
 	struct sctp_tcb *stcb;	/* assoc, used for window update */
 	TAILQ_ENTRY(sctp_queued_to_read) next;
+	TAILQ_ENTRY(sctp_queued_to_read) next_instrm;
+	struct sctpchunk_listhead reasm;
 	uint16_t port_from;
 	uint16_t spec_flags;	/* Flags to hold the notification field */
 	uint8_t  do_not_ref_stcb;
 	uint8_t  end_added;
 	uint8_t  pdapi_aborted;
 	uint8_t  some_taken;
+	uint8_t  last_frag_seen;
+	uint8_t  first_frag_seen;
+	uint8_t  on_read_q;
+	uint8_t  old_data;
 };
 
 /* This data structure will be on the outbound
@@ -558,6 +568,8 @@ struct sctp_stream_queue_pending {
 	struct sctp_nets *net;
 	TAILQ_ENTRY (sctp_stream_queue_pending) next;
 	TAILQ_ENTRY (sctp_stream_queue_pending) ss_next;
+	uint32_t fsn;
+	uint32_t msg_id;
 	uint32_t length;
 	uint32_t timetolive;
 	uint32_t ppid;
@@ -581,9 +593,12 @@ struct sctp_stream_queue_pending {
 TAILQ_HEAD(sctpwheelunrel_listhead, sctp_stream_in);
 struct sctp_stream_in {
 	struct sctp_readhead inqueue;
+	struct sctp_readhead uno_inqueue;
+	struct sctp_queued_to_read *uno_pd;	/* For old style */
 	uint16_t stream_no;
 	uint16_t last_sequence_delivered;	/* used for re-order */
 	uint8_t  delivery_started;
+	uint8_t  pd_api_started;
 };
 
 TAILQ_HEAD(sctpwheel_listhead, sctp_stream_out);
@@ -861,9 +876,6 @@ struct sctp_association {
 	struct sctpchunk_listhead sent_queue;
 	struct sctpchunk_listhead send_queue;
 
-	/* re-assembly queue for fragmented chunks on the inbound path */
-	struct sctpchunk_listhead reasmqueue;
-
 	/* Scheduling queues */
 	union scheduling_data ss_data;
 
@@ -929,7 +941,7 @@ struct sctp_association {
 	uint32_t stream_scheduling_module;
 
 	uint32_t vrf_id;
-
+	uint32_t assoc_msg_id;
 	uint32_t cookie_preserve_req;
 	/* ASCONF next seq I am sending out, inits at init-tsn */
 	uint32_t asconf_seq_out;
@@ -1209,7 +1221,7 @@ struct sctp_association {
 	uint8_t hb_random_idx;
 	uint8_t default_dscp;
 	uint8_t asconf_del_pending;	/* asconf delete last addr pending */
-	uint8_t trigger_reset;
+
 	/*
 	 * This value, plus all other ack'd but above cum-ack is added
 	 * together to cross check against the bit that we have yet to
@@ -1231,6 +1243,7 @@ struct sctp_association {
 
 	uint8_t local_strreset_support;
 
+	uint8_t peer_supports_ndata;
 	uint8_t peer_supports_nat;
 
 	struct sctp_scoping scope;
