@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_output.c 285792 2015-07-22 11:30:37Z rrs $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_output.c 285837 2015-07-24 14:09:03Z rrs $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -7861,6 +7861,7 @@ re_look:
 	if (M_LEADINGSPACE(chk->data) < leading) {
 		/* Not enough room for a chunk header, get some */
 		struct mbuf *m;
+
 		m = sctp_get_mbuf_for_msg(1, 0, M_NOWAIT, 0, MT_DATA);
 		if (m == NULL) {
 			/*
@@ -7952,7 +7953,6 @@ re_look:
 		sctp_auth_key_acquire(stcb, chk->auth_keyid);
 		chk->holds_key_ref = 1;
 	}
-
 #if defined(__FreeBSD__) || defined(__Panda__)
 	chk->rec.data.TSN_seq = atomic_fetchadd_int(&asoc->sending_seq, 1);
 #else
@@ -8274,7 +8274,6 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 	*num_out = 0;
 	*reason_code = 0;
 	auth_keyid = stcb->asoc.authinfo.active_keyid;
-
 	if ((asoc->state & SCTP_STATE_SHUTDOWN_PENDING) ||
 	    (asoc->state & SCTP_STATE_SHUTDOWN_RECEIVED) ||
 	    (sctp_is_feature_on(inp, SCTP_PCB_FLAGS_EXPLICIT_EOR))) {
@@ -10620,7 +10619,7 @@ do_it_again:
 		sctp_fix_ecn_echo(asoc);
 
 	if (stcb->asoc.trigger_reset) {
-		if (sctp_send_stream_reset_out_if_possible(stcb) == 0)  {
+		if (sctp_send_stream_reset_out_if_possible(stcb, so_locked) == 0)  {
 			goto do_it_again;
 		}
 	}
@@ -12550,7 +12549,7 @@ sctp_add_an_in_stream(struct sctp_tmit_chunk *chk,
 }
 
 int
-sctp_send_stream_reset_out_if_possible(struct sctp_tcb *stcb)
+sctp_send_stream_reset_out_if_possible(struct sctp_tcb *stcb, int so_locked)
 {
 	struct sctp_association *asoc;
 	struct sctp_tmit_chunk *chk;
@@ -12576,7 +12575,7 @@ sctp_send_stream_reset_out_if_possible(struct sctp_tcb *stcb)
 	chk->book_size_scale = 0;
 	chk->data = sctp_get_mbuf_for_msg(MCLBYTES, 0, M_NOWAIT, 1, MT_DATA);
 	if (chk->data == NULL) {
-		sctp_free_a_chunk(stcb, chk, SCTP_SO_LOCKED);
+		sctp_free_a_chunk(stcb, chk, so_locked);
 		SCTP_LTRACE_ERR_RET(NULL, stcb, NULL, SCTP_FROM_SCTP_OUTPUT, ENOMEM);
 		return (ENOMEM);
 	}
@@ -12603,7 +12602,7 @@ sctp_send_stream_reset_out_if_possible(struct sctp_tcb *stcb)
 	} else {
 		m_freem(chk->data);
 		chk->data = NULL;
-		sctp_free_a_chunk(stcb, chk, SCTP_SO_LOCKED);
+		sctp_free_a_chunk(stcb, chk, so_locked);
 		return(ENOENT);
 	}
 	asoc->str_reset = chk;
@@ -12612,6 +12611,10 @@ sctp_send_stream_reset_out_if_possible(struct sctp_tcb *stcb)
 			  chk,
 			  sctp_next);
 	asoc->ctrl_queue_cnt++;
+
+	if (stcb->asoc.send_sack) {
+		sctp_send_sack(stcb, so_locked);
+	}
 	sctp_timer_start(SCTP_TIMER_TYPE_STRRESET, stcb->sctp_ep, stcb, chk->whoTo);
 	return(0);
 }
@@ -12807,6 +12810,9 @@ skip_stuff:
 			  chk,
 			  sctp_next);
 	asoc->ctrl_queue_cnt++;
+	if (stcb->asoc.send_sack) {
+		sctp_send_sack(stcb, SCTP_SO_LOCKED);
+	}
 	sctp_timer_start(SCTP_TIMER_TYPE_STRRESET, stcb->sctp_ep, stcb, chk->whoTo);
 	return (0);
 }
@@ -14195,7 +14201,7 @@ skip_preblock:
 				/*-
 				 * Ok, Nagle is set on and we have data outstanding.
 				 * Don't send anything and let SACKs drive out the
-				 * data unless wen have a "full" segment to send.
+				 * data unless we have a "full" segment to send.
 				 */
 				if (SCTP_BASE_SYSCTL(sctp_logging_level) & SCTP_NAGLE_LOGGING_ENABLE) {
 					sctp_log_nagle_event(stcb, SCTP_NAGLE_APPLIED);
