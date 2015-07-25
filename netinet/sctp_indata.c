@@ -136,7 +136,7 @@ sctp_build_readq_entry(struct sctp_tcb *stcb,
     struct sctp_nets *net,
     uint32_t tsn, uint32_t ppid,
     uint32_t context, uint16_t stream_no,
-    uint16_t stream_seq, uint8_t flags,
+    uint32_t stream_seq, uint8_t flags,
     struct mbuf *dm)
 {
 	struct sctp_queued_to_read *read_queue_e = NULL;
