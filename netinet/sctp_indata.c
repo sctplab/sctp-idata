@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_indata.c 285886 2015-07-26 10:17:17Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_indata.c 285887 2015-07-26 10:37:40Z tuexen $");
 #endif
 #include <netinet/sctp_os.h>
 #ifdef __FreeBSD__
@@ -561,6 +561,20 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 	sctp_ucount_incr(asoc->cnt_on_all_streams);
 	nxt_todel = strm->last_sequence_delivered + 1;
 	if (nxt_todel == control->sinfo_ssn) {
+#if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
+		struct socket *so;
+
+		so = SCTP_INP_SO(stcb->sctp_ep);
+		atomic_add_int(&stcb->asoc.refcnt, 1);
+		SCTP_TCB_UNLOCK(stcb);
+		SCTP_SOCKET_LOCK(so, 1);
+		SCTP_TCB_LOCK(stcb);
+		atomic_subtract_int(&stcb->asoc.refcnt, 1);
+		if (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE) {
+			SCTP_SOCKET_UNLOCK(so, 1);
+			return;
+		}
+#endif
 		/* can be delivered right away? */
 		if (SCTP_BASE_SYSCTL(sctp_logging_level) & SCTP_STR_LOGGING_ENABLE) {
 			sctp_log_strm_del(control, NULL, SCTP_STR_LOG_FROM_IMMED_DEL);
@@ -611,6 +625,9 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 			}
 			break;
 		}
+#if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
+		SCTP_SOCKET_UNLOCK(so, 1);
+#endif
 	}
 	if (queue_needed) {
 		/*
