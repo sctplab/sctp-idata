@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_indata.c 285887 2015-07-26 10:37:40Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_indata.c 285938 2015-07-28 08:50:13Z tuexen $");
 #endif
 #include <netinet/sctp_os.h>
 #ifdef __FreeBSD__
@@ -2448,8 +2448,11 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 				 */
 				if (SCTP_BASE_SYSCTL(sctp_strict_data_order)) {
 					struct mbuf *op_err;
+					char msg[SCTP_DIAG_INFO_LEN];
 
-					op_err = sctp_generate_cause(SCTP_CAUSE_PROTOCOL_VIOLATION, "");
+					snprintf(msg, sizeof(msg), "DATA chunk followed by chunk of type %2.2x",
+					         ch->ch.chunk_type);
+					op_err = sctp_generate_cause(SCTP_CAUSE_PROTOCOL_VIOLATION, msg);
 					sctp_abort_association(inp, stcb,
 					                       m, iphlen,
 					                       src, dst,
