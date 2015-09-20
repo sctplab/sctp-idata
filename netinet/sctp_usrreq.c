@@ -2360,15 +2360,34 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		*optsize = sizeof(uint32_t);
 		break;
 	}
-	case SCTP_NDATA_ENABLE:
+	case SCTP_INTERLEAVING_SUPPORTED:
 	{
-		uint32_t *value;
+		struct sctp_assoc_value *av;
 
-		SCTP_CHECK_AND_CAST(value, optval, uint32_t, *optsize);
-		if (sctp_is_feature_on(inp, SCTP_PCB_FLAGS_USE_NDATA)) {
-			*value = 1;
+		SCTP_CHECK_AND_CAST(av, optval, struct sctp_assoc_value, *optsize);
+		SCTP_FIND_STCB(inp, stcb, av->assoc_id);
+
+		if (stcb) {
+			av->assoc_value = stcb->asoc.peer_supports_ndata;
+			SCTP_TCB_UNLOCK(stcb);
 		} else {
-			*value = 0;
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
+			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
+			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+				SCTP_INP_RLOCK(inp);
+				if (sctp_is_feature_on(inp, SCTP_PCB_FLAGS_USE_NDATA)) {
+					av->assoc_value = 1;
+				} else {
+					av->assoc_value = 0;
+				}
+				SCTP_INP_RUNLOCK(inp);
+			} else {
+				SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, EINVAL);
+				error = EINVAL;
+			}
+		}
+		if (error == 0) {
+			*optsize = sizeof(struct sctp_assoc_value);
 		}
 		break;
 	}
@@ -4626,23 +4645,42 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		}
 		break;
 	}
-	case SCTP_NDATA_ENABLE:
-		SCTP_CHECK_AND_CAST(mopt, optval, uint32_t, optsize);
-		if (*mopt) {
-			/* Turn it on */
-			if ((sctp_is_feature_on(inp, SCTP_PCB_FLAGS_FRAG_INTERLEAVE))  &&
-			    (sctp_is_feature_on(inp, SCTP_PCB_FLAGS_INTERLEAVE_STRMS))) {
-				sctp_feature_on(inp, SCTP_PCB_FLAGS_USE_NDATA);
+	case SCTP_INTERLEAVING_SUPPORTED:
+	{
+		struct sctp_assoc_value *av;
+
+		SCTP_CHECK_AND_CAST(av, optval, struct sctp_assoc_value, optsize);
+		SCTP_FIND_STCB(inp, stcb, av->assoc_id);
+
+		if (stcb) {
+			SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, EINVAL);
+			error = EINVAL;
+			SCTP_TCB_UNLOCK(stcb);
+		} else {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
+			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
+			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+				SCTP_INP_WLOCK(inp);
+				if (av->assoc_value == 0) {
+					sctp_feature_off(inp, SCTP_PCB_FLAGS_USE_NDATA);
+				} else {
+					if ((sctp_is_feature_on(inp, SCTP_PCB_FLAGS_FRAG_INTERLEAVE))  &&
+					    (sctp_is_feature_on(inp, SCTP_PCB_FLAGS_INTERLEAVE_STRMS))) {
+						sctp_feature_on(inp, SCTP_PCB_FLAGS_USE_NDATA);
+					} else {
+						/* Must have Frag interleave and stream interleave on */
+						SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, EINVAL);
+						error = EINVAL;
+					}
+				}
+				SCTP_INP_WUNLOCK(inp);
 			} else {
-				/* Must have Frag interleave and stream interleave on */
 				SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, EINVAL);
 				error = EINVAL;
 			}
-		} else {
-			/* Turn it off */
-			sctp_feature_off(inp, SCTP_PCB_FLAGS_USE_NDATA);
 		}
 		break;
+	}
 	case SCTP_CMT_ON_OFF:
 		if (SCTP_BASE_SYSCTL(sctp_cmt_on_off)) {
 			struct sctp_assoc_value *av;
