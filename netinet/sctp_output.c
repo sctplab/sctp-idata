@@ -8013,6 +8013,7 @@ re_look:
 		ndchkh->dp.tsn = htonl(chk->rec.data.TSN_seq);
 		ndchkh->dp.stream_id = htons(strq->stream_no);
 		/* WHAT DO WE DO HERE??? */
+		ndchkh->dp.reserved = htons(0);
 		ndchkh->dp.msg_id = htonl(chk->rec.data.stream_seq);
 		if (sp->fsn == 0)
 			ndchkh->dp.protocol_id = chk->rec.data.payloadtype;

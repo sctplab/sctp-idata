@@ -202,8 +202,8 @@ struct sctp_paramhdr {
 #define SCTP_PLUGGABLE_SS		0x00001203
 #define SCTP_SS_VALUE			0x00001204
 #define SCTP_CC_OPTION			0x00001205 /* Options for CC modules */
-/* For NDATA */
-#define SCTP_NDATA_ENABLE		0x00001206
+/* For I-DATA */
+#define SCTP_INTERLEAVING_SUPPORTED	0x00001206
 
 /* read only */
 #define SCTP_GET_SNDBUF_USE		0x00001101
@@ -468,8 +468,8 @@ struct sctp_error_auth_invalid_hmac {
 #define SCTP_AUTHENTICATION     0x0f
 /* EY nr_sack chunk id*/
 #define SCTP_NR_SELECTIVE_ACK	0x10
-#define SCTP_NDATA		0x11
 /************0x40 series ***********/
+#define SCTP_NDATA		0x40
 /************0x80 series ***********/
 /* RFC5061 */
 #define	SCTP_ASCONF_ACK		0x80
