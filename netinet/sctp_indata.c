@@ -361,7 +361,7 @@ sctp_mark_non_revokable(struct sctp_association *asoc, uint32_t tsn)
 		SCTP_UNSET_TSN_PRESENT(asoc->mapping_array, gap);
 	if ((in_r == 0) && (in_nr)) {
 		printf("%s:TSN %d was in_r:%d but in_nr:%d\n",
-		       __FUNCTION__,
+		       __func__,
 		       tsn, in_r, in_nr);
 	}
 	if (SCTP_TSN_GT(tsn, asoc->highest_tsn_inside_nr_map)) {
@@ -586,7 +586,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 		sctp_ucount_decr(asoc->cnt_on_all_streams);
 		strm->last_sequence_delivered++;
 		printf("%s:Mark non-revoke control:%p tsn:%d\n",
-		       __FUNCTION__, control, control->sinfo_tsn);
+		       __func__, control, control->sinfo_tsn);
 		sctp_mark_non_revokable(asoc, control->sinfo_tsn);
 		sctp_add_to_readq(stcb->sctp_ep, stcb,
 		                  control,
@@ -612,8 +612,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 							  SCTP_STR_LOG_FROM_IMMED_DEL);
 				}
 				printf("%s:Mark non-revoke control:%p tsn:%d\n",
-				       __FUNCTION__,
-				       control, control->sinfo_tsn);
+				       __func__, control, control->sinfo_tsn);
 				sctp_mark_non_revokable(asoc, control->sinfo_tsn);
 				sctp_add_to_readq(stcb->sctp_ep, stcb,
 				                  control,
@@ -1052,8 +1051,7 @@ deliver_more:
 			if (((control->sinfo_flags >> 8) & SCTP_DATA_NOT_FRAG) == SCTP_DATA_NOT_FRAG) {
 				/* A singleton now slipping through - mark it non-revokable too */
 				printf("%s:Mark non-revoke control:%p tsn:%d\n",
-				       __FUNCTION__,
-				       control, control->sinfo_tsn);
+				       __func__, control, control->sinfo_tsn);
 				sctp_mark_non_revokable(asoc, control->sinfo_tsn);
 			} else if (control->end_added == 0) {
 				/* Check if we can defer adding until its all there */
@@ -1842,8 +1840,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		if (chunk_flags & SCTP_DATA_UNORDERED) {
 			/* queue directly into socket buffer */
 			printf("%s:Mark non-revoke control:%p tsn:%d\n",
-			       __FUNCTION__,
-			       control, control->sinfo_tsn);
+			       __func__, control, control->sinfo_tsn);
 			sctp_mark_non_revokable(asoc, control->sinfo_tsn);
 			sctp_add_to_readq(stcb->sctp_ep, stcb,
 			                  control,
