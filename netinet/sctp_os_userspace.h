@@ -530,7 +530,6 @@ struct sx {int dummy;};
 #endif
 #if !defined(__Userspace_os_Windows)
 #include <netinet/ip6.h>
-#include <netinet/icmp6.h>
 #endif
 #if defined(__Userspace_os_Darwin) || defined(__Userspace_os_FreeBSD) || defined(__Userspace_os_Linux) || defined(__Userspace_os_NetBSD) || defined(__Userspace_os_OpenBSD) || defined(__Userspace_os_Windows)
 #include "user_ip6_var.h"
@@ -810,8 +809,6 @@ sctp_hashfreedestroy(void *vhashtbl, struct malloc_type *type, u_long hashmask);
 /*__Userspace__ defining KTR_SUBSYS 1 as done in sctp_os_macosx.h */
 #define KTR_SUBSYS 1
 
-#define sctp_get_tick_count() (ticks)
-
 /* The packed define for 64 bit platforms */
 #if !defined(__Userspace_os_Windows)
 #define SCTP_PACKED __attribute__((packed))
@@ -949,13 +946,6 @@ int sctp_userspace_get_mtu_from_ifn(uint32_t if_index, int af);
 #define SCTP_GET_HEADER_FOR_OUTPUT(o_pak) 0
 #define SCTP_RELEASE_HEADER(m)
 #define SCTP_RELEASE_PKT(m)	sctp_m_freem(m)
-/* UDP __Userspace__ - dummy definition */
-#define SCTP_ENABLE_UDP_CSUM(m) m=m
-/* BSD definition */
-/* #define SCTP_ENABLE_UDP_CSUM(m) do { \ */
-/*                                         m->m_pkthdr.csum_flags = CSUM_UDP; \ */
-/*                                         m->m_pkthdr.csum_data = offsetof(struct udphdr, uh_sum); \ */
-/*                                 } while (0) */
 
 #define SCTP_GET_PKT_VRFID(m, vrf_id)  ((vrf_id = SCTP_DEFAULT_VRFID) != SCTP_DEFAULT_VRFID)
 
@@ -1049,6 +1039,9 @@ struct sockaddr_conn {
 	uint16_t sconn_port;
 	void *sconn_addr;
 };
+
+void
+sctp_userspace_set_threadname(const char *name);
 
 /*
  * SCTP protocol specific mbuf flags.
