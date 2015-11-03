@@ -4850,10 +4850,11 @@ sctp_add_to_readq(struct sctp_inpcb *inp,
 		control->end_added = 1;
 	}
 #if defined(__Userspace__)
-	if (inp->recv_callback) {
+	if (inp->recv_callback != NULL) {
 		if (inp_read_lock_held == 0)
 			SCTP_INP_READ_UNLOCK(inp);
-		if (control->end_added == 1) {
+		if ((control->end_added == 1) &&
+		    (stcb != NULL) && (stcb->sctp_socket != NULL)) {
 			struct socket *so;
 			struct mbuf *m;
 			char *buffer;
@@ -6422,7 +6423,7 @@ sctp_sorecvmsg(struct socket *so,
 					/* been through it all, must hold sb lock ok to null tail */
 					if (control->data == NULL) {
 #ifdef INVARIANTS
-#if !defined(__APPLE__)
+#if defined(__FreeBSD__)
 						if ((control->end_added == 0) ||
 						    (TAILQ_NEXT(control, next) == NULL)) {
 							/* If the end is not added, OR the
