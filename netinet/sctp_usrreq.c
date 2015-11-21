@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 291078 2015-11-19 16:46:00Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 291138 2015-11-21 16:32:14Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -765,10 +765,11 @@ sctp_attach(struct socket *so, int proto SCTP_UNUSED, struct proc *p SCTP_UNUSED
 				SCTP_INP_WUNLOCK(inp);
 			}
 		}
+		so->so_pcb = NULL;
 		return (error);
 	}
 #endif
-#endif				/* IPSEC */
+#endif
 	SCTP_INP_WUNLOCK(inp);
 	return (0);
 }
@@ -1422,16 +1423,15 @@ sctp_shutdown(struct socket *so)
 		} else {
 			netp = stcb->asoc.primary_destination;
 		}
-		if (TAILQ_EMPTY(&asoc->send_queue) &&
+		if ((SCTP_GET_STATE(asoc) == SCTP_STATE_OPEN) &&
+		    TAILQ_EMPTY(&asoc->send_queue) &&
 		    TAILQ_EMPTY(&asoc->sent_queue) &&
 		    (asoc->stream_queue_cnt == 0)) {
 			if (asoc->locked_on_sending) {
 				goto abort_anyway;
 			}
 			/* there is nothing queued to send, so I'm done... */
-			if (SCTP_GET_STATE(asoc) == SCTP_STATE_OPEN) {
-				SCTP_STAT_DECR_GAUGE32(sctps_currestab);
-			}
+			SCTP_STAT_DECR_GAUGE32(sctps_currestab);
 			SCTP_SET_STATE(asoc, SCTP_STATE_SHUTDOWN_SENT);
 			SCTP_CLEAR_SUBSTATE(asoc, SCTP_STATE_SHUTDOWN_PENDING);
 			sctp_stop_timers_for_shutdown(stcb);
