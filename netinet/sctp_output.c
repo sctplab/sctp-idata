@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_output.c 291700 2015-12-03 15:19:29Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_output.c 291904 2015-12-06 16:17:57Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -3746,6 +3746,7 @@ sctp_process_cmsgs_for_init(struct sctp_tcb *stcb, struct mbuf *control, int *er
 #endif
 						stcb->asoc.strmout[i].stream_no = i;
 						stcb->asoc.strmout[i].last_msg_incomplete = 0;
+						stcb->asoc.strmout[i].state = SCTP_STREAM_OPENING;
 						stcb->asoc.ss_functions.sctp_ss_init_stream(&stcb->asoc.strmout[i], NULL);
 					}
 				}
@@ -6269,10 +6270,10 @@ sctp_send_initiate_ack(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	his_limit = ntohs(init_chk->init.num_inbound_streams);
 	/* choose what I want */
 	if (asoc != NULL) {
-		if (asoc->streamoutcnt > inp->sctp_ep.pre_open_stream_count) {
+		if (asoc->streamoutcnt > asoc->pre_open_streams) {
 			i_want = asoc->streamoutcnt;
 		} else {
-			i_want = inp->sctp_ep.pre_open_stream_count;
+			i_want = asoc->pre_open_streams;
 		}
 	} else {
 		i_want = inp->sctp_ep.pre_open_stream_count;
@@ -13608,6 +13609,7 @@ sctp_lower_sosend(struct socket *so,
 			}
 #endif
 			stcb = sctp_aloc_assoc(inp, addr, &error, 0, vrf_id,
+			                       inp->sctp_ep.pre_open_stream_count,
 #if !(defined( __Panda__) || defined(__Userspace__))
 					       p
 #else
