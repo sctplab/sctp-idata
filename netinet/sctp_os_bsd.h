@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 285877 2015-07-25 18:26:09Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 292782 2015-12-27 17:33:59Z allanjude $");
 #endif
 
 #ifndef _NETINET_SCTP_OS_BSD_H_
@@ -119,7 +119,7 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 285877 2015-07-25 18:26:09Z t
 
 #include <crypto/sha1.h>
 #if defined(SCTP_SUPPORT_HMAC_SHA256)
-#include <crypto/sha2/sha2.h>
+#include <crypto/sha2/sha256.h>
 #endif
 
 #if defined(__FreeBSD__)
