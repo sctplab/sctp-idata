@@ -1,0 +1,674 @@
+<?xml version="1.0"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+<?rfc toc="yes"?>
+<?rfc compact="yes" ?>
+<?rfc subcompact="no" ?>
+<?rfc strict="yes" ?>
+
+<!-- FIXME: Address Karen's comments
+            Socket API (Schedulers)
+            Maybe focus on schedulers and take the view that I-DATA just allows more schedulers.
+-->
+
+<rfc category="std"
+     ipr="trust200902"
+     docName="draft-ietf-tsvwg-sctp-ndata-05.txt">
+<front>
+<title abbrev="Stream Schedulers and the I-DATA Chunk">
+       Stream Schedulers and User Message Interleaving
+       for the Stream Control Transmission Protocol
+</title>
+
+<!-- *************** RANDALL STEWART *************** -->
+<author initials="R. R." surname="Stewart" fullname="Randall R. Stewart">
+<organization>Netflix, Inc.</organization>
+<address>
+    <postal>
+        <street></street>
+        <city>Chapin</city> <region>SC</region>
+        <code>29036</code>
+        <country>United States</country>
+    </postal>
+    <email>randall@lakerest.net</email>
+</address>
+</author>
+
+<!-- ************** MICHAEL TUEXEN *************** -->
+<author initials="M." surname="Tuexen" fullname="Michael Tuexen">
+<organization abbrev="Muenster Univ. of Appl. Sciences">
+              Muenster University of Applied Sciences</organization>
+<address>
+    <postal>
+        <street>Stegerwaldstrasse 39</street>
+        <city>48565 Steinfurt</city>
+        <country>Germany</country>
+    </postal>
+    <email>tuexen@fh-muenster.de</email>
+</address>
+</author>
+
+<!-- *************** SALVATORE LORETO ************** -->
+<author initials='S.' surname='Loreto' fullname='Salvatore Loreto'>
+  <organization>Ericsson</organization>
+  <address>
+    <postal>
+      <street>Hirsalantie 11</street>
+      <city>Jorvas</city>
+      <code> 02420 </code>
+      <country>Finland</country>
+    </postal>
+    <email>Salvatore.Loreto@ericsson.com</email>
+  </address>
+</author>
+
+<!-- ************** ROBIN SEGGELMANN *************** -->
+<author initials="R." surname="Seggelmann" fullname="Robin Seggelmann">
+<organization>Metafinanz Informationssysteme GmbH</organization>
+<address>
+    <postal>
+        <street>Leopoldstrasse 146</street>
+        <city>80804 Muenchen</city>
+        <country>Germany</country>
+    </postal>
+    <email>rfc@robin-seggelmann.com</email>
+</address>
+</author>
+<date />
+
+<keyword>Internet-Draft</keyword>
+
+<abstract>
+<t>The Stream Control Transmission Protocol (SCTP) is a message oriented
+transport protocol supporting arbitrary large user messages.
+However, the sender can not interleave different user messages which
+causes head of line blocking at the sender side.
+To overcome this limitation, this document adds a new data chunk to SCTP.</t>
+<t>Whenever an SCTP sender is allowed to send a user data, it can possibly
+choose from multiple outgoing SCTP streams. Multiple ways for this selection,
+called stream schedulers, are defined. Some of them don't require the support
+of user message interleaving, some do.</t>
+</abstract>
+
+</front>
+
+<middle>
+<section title="Introduction">
+<section title="Overview">
+<t>When SCTP <xref target='RFC4960'/> was initially designed it was mainly
+envisioned for transport of small signaling messages.
+Late in the design stage it was decided to add support for fragmentation and
+reassembly of larger messages with the thought that someday Session Initiation
+Protocol (SIP) <xref target='RFC3261'/> style signaling messages may also need
+to use SCTP and a single MTU sized message would be too small.
+Unfortunately this design decision, though valid at the time, did not account
+for other applications which might send very large messages over SCTP.
+When such large messages are now sent over SCTP a form of sender side head of
+line blocking becomes created within the protocol.
+This head of line blocking is caused by the use of the Transmission Sequence
+Number (TSN) for two different purposes:
+<list style="numbers">
+<t>As an identifier for DATA chunks to provide a reliable transfer.</t>
+<t>As an identifier for the sequence of fragments to allow reassembly.</t>
+</list>
+The protocol requires all fragments of a user message to have consecutive
+TSNs. Therefore it is impossible for the sender to interleave different
+user messages.</t>
+<t>This document describes a new Data chunk called I-DATA.
+This chunk incorporates all the flags and fields except the Stream Sequence
+Number (SSN) and properties of the current SCTP Data chunk but also adds two
+new fields in its chunk header, the Fragment Sequence Number (FSN) and the
+Message Identifier (MID).
+Then the FSN is only used for reassembling all fragments with the same MID
+and the TSN only for the reliability.
+The MID is also used for ensuring ordered delivery, therefore replacing the
+stream sequence number.
+Therefore, the head of line blocking caused by the original design is
+avoided.</t>
+<t>The support of the I-DATA chunk is negotiated during the association setup
+using the Supported Extensions Parameter as defined in
+<xref target='RFC5061'/>. If I-DATA support has been negotiated for an
+association I-DATA chunks are used for all user-messages and no DATA chunks.
+It should be noted, that an SCTP implementation needs to support the
+coexistence of associations using DATA chunks and associations using I-DATA
+chunks.</t>
+<t>This document also defines several stream schedulers for general SCTP
+associations. If I-DATA support has been negotiated, several more schedulers
+are available.</t>
+</section>
+
+<section title="Conventions">
+<t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in
+<xref target='RFC2119'/>.</t>
+</section>
+</section>
+
+<section anchor='interleaving' title="User Message Interleaving">
+<!-- Add a Motivation section -->
+<t>The interleaving of user messages is required for WebRTC Datachannels
+as specified in <xref target='I-D.ietf-rtcweb-data-channel'/>.</t>
+<section title="The I-DATA Chunk supporting User Message Interleaving">
+<t>The following <xref target='i_data_chunk'/> shows the
+new I-DATA chunk allowing user messages interleaving.</t>
+<figure title='I-DATA chunk format'
+        anchor='i_data_chunk'>
+<artwork>
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   Type = 64   |  Res  |I|U|B|E|           Length              |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                              TSN                              |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|        Stream Identifier      |           Reserved            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                      Message Identifier                       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|    Payload Protocol Identifier / Fragment Sequence Number     |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+\                                                               \
+/                           User Data                           /
+\                                                               \
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+</artwork>
+</figure>
+
+<t>The only differences between the I-DATA chunk in
+<xref target='i_data_chunk'/> and the DATA chunk defined in
+<xref target='RFC4960'/> and <xref target='RFC7053'/> is the
+addition of the new Message Identifier (MID) and
+Fragment Sequence Number (FSN) and the
+removal of the Stream Sequence Number (SSN).
+However, the lower 16-bit of the MID can be used as the SSN if necessary.
+The length of the I-DATA chunk header is 20 bytes, which is 4 bytes more than
+the length of the DATA chunk header defined in <xref target='RFC4960'/>.</t>
+
+<t><list style="hanging">
+<t hangText="Reserved: 16 bits (unsigned integer)">
+<vspace blankLines="0"/>
+This field is reserved.
+It MUST be set to 0 by the sender and MUST be ignored by the receiver.</t>
+<t hangText="Message Identifier (MID): 32 bits (unsigned integer)">
+<vspace blankLines="0"/>
+The MID is the same for all fragments of a user message, it is used to
+determine which fragments (enumerated by the FSN) belong to the same user
+message. For ordered user messages, the MID is also used by the SCTP receiver
+to deliver the user messages in the correct order to the upper layer (similar
+to the SSN of the DATA chunk defined in <xref target='RFC4960'/>).
+The sender uses two counters, one for ordered messages, one for unordered
+messages, for each outgoing streams. All counters are independent and initially
+0. They are incremented by 1 for each user message.
+Please note that the serial number arithmetic defined in
+<xref target='RFC1982'/> using SERIAL_BITS = 32 applies.
+Therefore the sender MUST NOT have more than 2**31 - 1 ordered messages for
+each outgoing stream in flight and MUST NOT have more than 2**31 - 1 unordered
+messages for each outgoing stream in flight.
+<!-- For ordered user messages, the lower 16 bit of the MID can be used as a SSN if
+required. -->
+Please note that the MID is in "network byte order", a.k.a. Big Endian.</t>
+<t hangText="Payload Protocol Identifier (PPID) / Fragment Sequence Number (FSN): 32 bits (unsigned integer)">
+<vspace blankLines="0"/>
+If the B bit is set, this field contains the PPID of the user message.
+In this case the FSN is implicitly considered to be 0.
+If the B bit is not set, this field contains the FSN.
+The FSN is used to enumerate all fragments of a single user message, starting
+from 0 and incremented by 1.
+The last fragment of a message MUST have the 'E' bit set.
+Note that the FSN MAY wrap completely multiple times allowing arbitrary large
+user messages. For the FSN the serial number arithmetic defined in
+<xref target='RFC1982'/> applies with SERIAL_BITS = 32.
+Therefore a sender MUST NOT have more than 2**31 - 1 fragments of a single user
+message in flight.
+Please note that the FSN is in "network byte order", a.k.a. Big Endian.</t>
+</list></t>
+</section>
+
+<section title='Procedures'>
+<t>This subsection describes how the support of the I-DATA chunk is negotiated
+and how the I-DATA chunk is used by the sender and receiver.</t>
+<section title='Negotiation'>
+<t>A sender MUST NOT send a I-DATA chunk unless both peers have indicated
+its support of the I-DATA chunk type within the Supported
+Extensions Parameter as defined in <xref target='RFC5061'/>.
+If I-DATA support has been negotiated on an association, I-DATA chunks
+MUST be used for all user messages and DATA-chunk MUST NOT be used.
+If I-DATA support has not been negotiated on an association, DATA chunks
+MUST be used for all user messages and I-DATA chunks MUST NOT be used.</t>
+<t>A sender MUST NOT use the I-DATA chunk unless the user
+has requested that use (e.g. via the socket API, see <xref target='api'/>).
+This constraint is made since usage of this chunk requires that the application
+be willing to interleave messages upon reception within an association.
+This is not the default choice within the socket API
+(see <xref target='RFC6458'/>) thus the user MUST indicate support to the
+protocol of the reception of completely interleaved messages.
+Note that for stacks that do not implement <xref target='RFC6458'/> they may
+use other methods to indicate interleaved message support and thus enable the
+usage of the I-DATA chunk, the key is that the the stack MUST know the
+application has indicated its choice in wanting to use the extension.</t>
+</section>
+
+<section title='Sender Side Considerations'>
+<t>Sender side usage of the I-DATA chunk is quite simple. Instead
+of using the TSN for fragmentation purposes, the sender uses the
+new FSN field to indicate which fragment number is being sent.
+The first fragment MUST have the 'B' bit set.
+The last fragment MUST have the 'E' bit set.
+All other fragments MUST NOT have the 'B' or 'E' bit set.
+All other properties of the existing SCTP DATA chunk also apply to
+the I-DATA chunk, i.e. congestion control as well as receiver
+window conditions MUST be observed as defined in <xref target='RFC4960'/>.</t>
+<!-- FIXME: State that a each DATA chunk still needs a single TSN. (Lixia) -->
+<t>Note that the usage of this chunk should also imply late binding of the
+actual TSN to any chunk being sent.
+This way other messages from other streams may be interleaved with the
+fragmented message.</t>
+
+<t>The sender MUST NOT have more than one ordered fragmented message being
+produced in any one stream. The sender MUST NOT have more than one un-ordered
+fragmented message being produced in any one stream. The sender MAY have
+one ordered and one unordered fragmented message being produced within
+a single stream. At any time multiple streams MAY be producing an ordered
+or unordered fragmented message.</t>
+</section>
+
+<section title='Receiver Side Considerations'>
+<t>Upon reception of an SCTP packet containing a I-DATA chunk if
+the message needs to be reassembled, then the receiver MUST use the FSN
+for reassembly of the message and not the TSN. Note that a non-fragmented
+messages is indicated by the fact that both the 'E' and 'B' bits are set.
+An ordered or unordered fragmented message is thus identified with any
+message not having both bits set.</t>
+</section>
+</section>
+
+<section title='Interaction with other SCTP Extensions'>
+<t>The usage of the I-DATA chunk might interfere with other SCTP extensions.
+Future SCTP extensions MUST describe if and how they interfere with the
+usage of I-DATA chunks. For the SCTP extensions already defined when this
+document was published, the details are given in the following subsections.</t>
+<section title='SCTP Partial Reliability Extension'>
+<!-- FIXME: Do we need a new FORWARD-TSN chunk? -->
+<t>When the SCTP extension defined in <xref target='RFC3758'/> is used,
+the the I-FORWARD-TSN chunk MUST be used instead of the FORWARD-TSN chunk.
+The only difference is that the 16-bit Stream Sequence Number (SSN)
+has been replaced by the 32-bit Message Identifier (MID).</t>
+<figure title='I-FORWARD-TSN chunk format'
+        anchor='i_forward_tsn_chunk'>
+<artwork>
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   Type = 194  | Flags = 0x00  |      Length = Variable        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       New Cumulative TSN                      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|             Stream 1          |           Reserved            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                      Message Identifier 1                     |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+\                                                               \
+/                                                               /
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|             Stream N          |           Reserved            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                      Message Identifier N                     |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+</artwork>
+</figure>
+
+</section>
+<section title='SCTP Stream Reconfiguration Extension'>
+<t>When an association resets the SSN using the SCTP extension defined in
+<xref target='RFC6525'/>, the two counters (one for the ordered messages,
+one for the unordered messages) used for the MID MUST be reset to 0
+correspondingly.</t>
+</section>
+</section>
+<!-- Add an Examples section -->
+</section>
+
+<section title="Stream Schedulers">
+<t>This section defines several stream schedulers.
+The stream schedulers which can be used even without the user message
+interleaving support as defined in <xref target='interleaving'/> are described
+in <xref target='ss_without_umi'/>.
+In <xref target='ss_with_umi'/> stream schedulers requiring user message
+interleaving defined in <xref target='interleaving'/> are described.</t>
+<section anchor='ss_without_umi'
+         title="Stream Scheduler without User Message Interleaving Support">
+<section anchor='sctp_ss_fcfs'
+         title='First Come First Serve (SCTP_SS_FCFS)'>
+<t>The simple first-come, first-serve scheduler of user messages is used.
+It just passes through the messages in the order in which they have been
+delivered by the application. No modification of the order is done at all.</t>
+</section>
+<section anchor='sctp_ss_rr'
+         title='User Message Based Round Robin Scheduler (SCTP_SS_RR)'>
+<t>This scheduler provides a fair scheduling based on the number of user messages
+by cycling around non-empty stream queues.</t>
+</section>
+<section anchor='sctp_ss_rr_pkt'
+         title='Packet Based Round Robin Scheduler (SCTP_SS_RR_PKT)'>
+<t>This is a round-robin scheduler but only bundles user messages of the same
+stream in one packet. This minimizes head-of-line blocking when a packet
+is lost because only a single stream is affected.</t>
+</section>
+<section anchor='sctp_ss_prio'
+         title='Priority Based Scheduler (SCTP_SS_PRIO)'>
+<t>Scheduling of user messages with strict priorities is used.
+The priority is configurable per outgoing SCTP stream. Streams having a higher
+priority will be scheduled first and when multiple streams have the same
+priority, the default scheduling should be used for them.</t>
+</section>
+<section anchor='sctp_ss_fb'
+         title='Fair Bandwidth Scheduler (SCTP_SS_FB)'>
+<t>A fair bandwidth distribution between the streams is used.
+This scheduler considers the lengths of the messages of each stream and
+schedules them in a certain way to maintain an equal bandwidth for all
+streams.</t>
+</section>
+<section anchor='sctp_ss_wfq'
+         title='Weighted Fair Queueing Scheduler (SCTP_SS_WFQ)'>
+<t>A weighted fair queueing scheduler between the streams is used. The weight is
+configurable per outgoing SCTP stream.
+This scheduler considers the lengths of the messages of each stream and
+schedules them in a certain way to use the bandwidth according to the given
+weights.</t>
+</section>
+</section>
+<section anchor='ss_with_umi'
+         title="Stream Scheduler with User Message Interleaving Support">
+<section anchor='sctp_ss_rr_inter'
+         title='User Message Based Round Robin Scheduler (SCTP_SS_RR_INTER)'>
+<t>This scheduler is similar to the one described in <xref target='sctp_ss_rr'/>,
+but based on I-DATA chunks instead of user messages.</t>
+</section>
+<section anchor='sctp_ss_rr_pkt_inter'
+         title='Packet Based Round Robin Scheduler (SCTP_SS_RR_PKT_INTER)'>
+<t>This scheduler is similar to the one described in <xref target='sctp_ss_rr_pkt'/>,
+but based on I-DATA chunks instead of user messages.</t>
+</section>
+<section anchor='sctp_ss_prio_inter'
+         title='Priority Based Scheduler (SCTP_SS_PRIO_INTER)'>
+<t>This scheduler is similar to the one described in <xref target='sctp_ss_prio'/>,
+but based on I-DATA chunks instead of user messages.</t>
+</section>
+<section anchor='sctp_ss_fb_inter'
+         title='Fair Bandwidth Scheduler (SCTP_SS_FB_INTER)'>
+<t>This scheduler is similar to the one described in <xref target='sctp_ss_fb'/>,
+but based on I-DATA chunks instead of user messages.</t>
+</section>
+<section anchor='sctp_ss_wfq_inter'
+         title='Weighted Fair Queueing Scheduler (SCTP_SS_WFQ_INTER)'>
+<t>This scheduler is similar to the one described in <xref target='sctp_ss_wfq'/>,
+but based on I-DATA chunks instead of user messages.
+This scheduler is used for WebRTC Datachannels
+as specified in <xref target='I-D.ietf-rtcweb-data-channel'/>.</t>
+</section>
+</section>
+</section>
+
+<section title='Socket API Considerations'
+         anchor='api'>
+<t>This section describes how the socket API defined in
+<xref target='RFC6458'/> is extended to allow applications to use the extension
+described in this document.</t>
+<t>Please note that this section is informational only.</t>
+
+<!-- FIXME: This section not only has to define new API elements, but also
+     needs to discuss interactions with existing elements.-->
+
+<section title="SCTP_ASSOC_CHANGE Notification">
+<t>When an SCTP_ASSOC_CHANGE notification is delivered indicating
+a sac_state of SCTP_COMM_UP or SCTP_RESTART for an SCTP association
+where both peers support the I-DATA chunk,
+SCTP_ASSOC_SUPPORTS_INTERLEAVING should be listen in the sac_info field.</t>
+</section>
+
+<section title="Socket Options">
+
+<texttable>
+<ttcol align='left'>option name</ttcol>
+<ttcol align='left'>data type</ttcol>
+<ttcol align='center'>get</ttcol>
+<ttcol align='center'>set</ttcol>
+<c>SCTP_INTERLEAVING_SUPPORTED</c> <c>struct sctp_assoc_value </c> <c>X</c> <c>X</c>
+<c>SCTP_PLUGGABLE_SS          </c> <c>struct sctp_assoc_value </c> <c>X</c> <c>X</c>
+<c>SCTP_SS_VALUE              </c> <c>struct sctp_stream_value</c> <c>X</c> <c>X</c>
+</texttable>
+
+<section title="Enable or Disable the Support of User Message Interleaving">
+<t>This socket option allows the enabling or disabling of the negotiation
+of user message interleaving support for future associations.
+For existing associations it allows to query whether user message interleaving
+support was negotiated or not on a particular association.</t>
+<t>User message interleaving is disabled per default.</t>
+<t>This socket option uses IPPROTO_SCTP as its level and SCTP_INTERLEAVING_SUPPORTED
+as its name. It can be used with getsockopt() and setsockopt().
+The socket option value uses the following structure
+defined in <xref target='RFC6458'/>:</t>
+<figure>
+<artwork>
+struct sctp_assoc_value {
+  sctp_assoc_t assoc_id;
+  uint32_t assoc_value;
+};
+</artwork>
+</figure>
+<t><list style="hanging">
+<t hangText="assoc_id:">
+This parameter is ignored for one-to-one style sockets.
+For one-to-many style sockets, this parameter indicates upon which association
+the user is performing an action.
+The special sctp_assoc_t SCTP_FUTURE_ASSOC can also be used,
+it is an error to use SCTP_{CURRENT|ALL}_ASSOC in assoc_id.</t>
+<t hangText="assoc_value:">
+A non-zero value encodes the enabling of user message interleaving whereas
+a value of 0 encodes the disabling of user message interleaving.</t>
+</list></t>
+<t>sctp_opt_info() needs to be extended to support SCTP_INTERLEAVING_SUPPORTED.</t>
+<t>An application using user message interleaving should also set the fragment
+interleave level to 2. This allows the reception from multiple streams
+simultaneously. Failure to set this option can possibly lead to application
+deadlock.</t>
+<!-- FIXME: Same socket option on the sender side? What about specifying stream
+     schedulers in this document. Interleaving with FCFS doesn't make much
+     sense... -->
+<!-- FIXME: Interaction with EEOR-Mode needs to be handled. -->
+</section>
+
+<section title="Get or Set the Stream Scheduler (SCTP_PLUGGABLE_SS)">
+<t>A stream scheduler can be selected with the SCTP_PLUGGABLE_SS
+option for setsockopt(). The struct sctp_assoc_value is used to
+specify the association for which the scheduler should be changed
+and the value of the desired algorithm.</t>
+
+<t>The definition of struct sctp_assoc_value is the same as in
+<xref target="RFC6458"/>:</t>
+<figure>
+<artwork>
+struct sctp_assoc_value {
+  sctp_assoc_t assoc_id;
+  uint32_t assoc_value;
+};
+</artwork>
+</figure>
+<t><list style='hanging'>
+<t hangText="assoc_id:">
+Holds the identifier for the association of which the scheduler should
+be changed. The special SCTP_{FUTURE|CURRENT|ALL}_ASSOC can also be
+used. This parameter is ignored for one-to-one style sockets.</t>
+
+<t hangText="assoc_value:">
+This specifies which scheduler is used. The following constants can be used:
+<!--The values defined in this
+document are given in <xref target="schedulertable"/>.-->
+<!-- FIXME: Which one have to be implemented?
+            Which ones work also if I-DATA hasn't been negotiated. -->
+<list style='hanging'>
+<t hangText="SCTP_SS_DEFAULT:">
+The default scheduler used by the SCTP implementation. Typical values are
+SCTP_SS_FCFS or SCTP_SS_RR.</t>
+<t hangText="SCTP_SS_FCFS:">
+Use the scheduler specified in <xref target='sctp_ss_fcfs'/>.</t>
+<t hangText="SCTP_SS_RR:">
+Use the scheduler specified in <xref target='sctp_ss_rr'/>.</t>
+<t hangText="SCTP_SS_RR_PKT:">
+Use the scheduler specified in <xref target='sctp_ss_rr_pkt'/>.</t>
+<t hangText="SCTP_SS_PRIO:">
+Use the scheduler specified in <xref target='sctp_ss_prio'/>.
+The priority can be assigned with the sctp_stream_value struct.
+The higher the assigned value, the lower the priority, that is the default
+value 0 is the highest priority and therefore the default scheduling will
+be used if no priorities have been assigned.</t>
+<t hangText="SCTP_SS_FB:">
+Use the scheduler specified in <xref target='sctp_ss_fb'/>.</t>
+<t hangText="SCTP_SS_WFQ:">
+Use the scheduler specified in <xref target='sctp_ss_wfq'/>.
+The weight can be assigned with the sctp_stream_value struct.</t>
+<t hangText="SCTP_SS_RR_INTER:">
+Use the scheduler specified in <xref target='sctp_ss_rr_inter'/>.</t>
+<t hangText="SCTP_SS_RR_PKT_INTER:">
+Use the scheduler specified in <xref target='sctp_ss_rr_pkt_inter'/>.</t>
+<t hangText="SCTP_SS_PRIO_INTER:">
+Use the scheduler specified in <xref target='sctp_ss_prio_inter'/>.
+The priority can be assigned with the sctp_stream_value struct.
+The higher the assigned value, the lower the priority, that is the default
+value 0 is the highest priority and therefore the default scheduling will
+be used if no priorities have been assigned.</t>
+<t hangText="SCTP_SS_FB_INTER:">
+Use the scheduler specified in <xref target='sctp_ss_fb_inter'/>.</t>
+<t hangText="SCTP_SS_WFQ_INTER:">
+Use the scheduler specified in <xref target='sctp_ss_wfq_inter'/>.
+The weight can be assigned with the sctp_stream_value struct.</t>
+</list></t>
+</list></t>
+</section>
+
+<section title="Get or Set the Stream Scheduler Parameter (SCTP_SS_VALUE)">
+<t>Some schedulers require additional information to be set for single streams
+as shown in the following table:</t>
+<texttable>
+<ttcol align='left'>name</ttcol>
+<ttcol align='center'>per stream info</ttcol>
+<c>SCTP_SS_DEFAULT</c>            <c>no</c>
+<c>SCTP_SS_FCFS</c>               <c>no</c>
+<c>SCTP_SS_RR</c>                 <c>no</c>
+<c>SCTP_SS_RR_PKT</c>             <c>no</c>
+<c>SCTP_SS_PRIO</c>               <c>yes</c>
+<c>SCTP_SS_FB</c>                 <c>no</c>
+<c>SCTP_SS_WFQ</c>                <c>yes</c>
+<c>SCTP_SS_RR_INTER</c>           <c>no</c>
+<c>SCTP_SS_RR_PKT_INTER</c>       <c>no</c>
+<c>SCTP_SS_PRIO_INTER</c>         <c>yes</c>
+<c>SCTP_SS_FB_INTER</c>           <c>no</c>
+<c>SCTP_SS_WFQ_INTER</c>          <c>yes</c>
+</texttable>
+<t>This is achieved with the SCTP_SS_VALUE option and the corresponding struct
+sctp_stream_value.
+The definition of struct sctp_stream_value is as follows:</t>
+<figure>
+<artwork>
+struct sctp_stream_value {
+  sctp_assoc_t assoc_id;
+  uint16_t stream_id;
+  uint16_t stream_value;
+};
+</artwork>
+</figure>
+
+<t><list style='hanging'>
+<t hangText="assoc_id:">
+Holds the identifier for the association of which the scheduler should
+be changed. The special SCTP_{FUTURE|CURRENT|ALL}_ASSOC can also be
+used. This parameter is ignored for one-to-one style sockets.</t>
+<t hangText="stream_id:">
+Holds the stream id for the stream for which additional information has
+to be provided.</t>
+<t hangText="stream_value:">
+The meaning of this field depends on the scheduler specified. It is
+ignored when the scheduler does not need additional information.</t>
+</list></t>
+</section>
+</section>
+</section>
+
+<section title="IANA Considerations">
+<t>[NOTE to RFC-Editor:
+<list>
+<t>"RFCXXXX" is to be replaced by the RFC number you assign this document.</t>
+</list>
+]</t>
+<t>[NOTE to RFC-Editor:
+<list>
+<t>The suggested values for the chunk type and the chunk flags are tentative
+and to be confirmed by IANA.</t>
+</list>
+]</t>
+<t>This document (RFCXXXX) is the reference for all registrations
+described in this section.</t>
+
+<t>A new chunk type has to be assigned by IANA.
+IANA should assign this value from the pool of chunks with the upper
+two bits set to '01'.
+This requires an additional line in the "Chunk Types" registry for SCTP:</t>
+<texttable>
+<ttcol align='left'>ID Value</ttcol>
+<ttcol align='left'>Chunk Type</ttcol>
+<ttcol align='left'>Reference</ttcol>
+<c>64</c> <c>New DATA chunk (I-DATA)</c> <c>[RFCXXXX]</c>
+</texttable>
+<t>The registration table as defined in <xref target='RFC6096'/> for
+the chunk flags of this chunk type is initially given by the following
+table:</t>
+<texttable>
+<ttcol align='left'>Chunk Flag Value</ttcol>
+<ttcol align='left'>Chunk Flag Name</ttcol>
+<ttcol align='left'>Reference</ttcol>
+<c>0x01</c> <c>E bit     </c> <c>[RFCXXXX]</c>
+<c>0x02</c> <c>B bit     </c> <c>[RFCXXXX]</c>
+<c>0x04</c> <c>U bit     </c> <c>[RFCXXXX]</c>
+<c>0x08</c> <c>I bit     </c> <c>[RFCXXXX]</c>
+<c>0x10</c> <c>Unassigned</c> <c>         </c>
+<c>0x20</c> <c>Unassigned</c> <c>         </c>
+<c>0x40</c> <c>Unassigned</c> <c>         </c>
+<c>0x80</c> <c>Unassigned</c> <c>         </c>
+</texttable>
+</section>
+
+<section title="Security Considerations">
+<t>This document does not add any additional security considerations
+in addition to the ones given in <xref target='RFC4960'/> and
+<xref target='RFC6458'/>.</t>
+</section>
+
+<section title='Acknowledgments'>
+<t>The authors wish to thank
+Christer Holmberg,
+Karen E. Egede Nielsen,
+Irene Ruengeler,
+and Lixia Zhang
+for her invaluable comments.</t>
+</section>
+
+</middle>
+
+<back>
+<references title='Normative References'>
+<?rfc include="reference.RFC.1982" ?>
+<?rfc include="reference.RFC.2119" ?>
+<?rfc include="reference.RFC.3758" ?>
+<?rfc include="reference.RFC.4960" ?>
+<?rfc include="reference.RFC.5061" ?>
+<?rfc include="reference.RFC.6096" ?>
+<?rfc include="reference.RFC.6525" ?>
+<?rfc include='reference.RFC.7053' ?>
+</references>
+<references title='Informative References'>
+<?rfc include="reference.RFC.3261" ?>
+<?rfc include="reference.RFC.6458" ?>
+<?rfc include='reference.I-D.ietf-rtcweb-data-channel'?>
+</references>
+</back>
+</rfc>
