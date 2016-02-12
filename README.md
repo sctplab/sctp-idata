@@ -1,4 +1,4 @@
-# Adding Support for [draft-ietf-tsvwg-sctp-ndata](https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata)
+# Developing Support for [draft-ietf-tsvwg-sctp-ndata](https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata)
 
 This repository is used to add support of [draft-ietf-tsvwg-sctp-ndata](https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata)
 to the SCTP kernel implementation of FreeBSD. This will also run as part of the userland stack [usrsctp](https://github.com/sctplab/usrsctp).
