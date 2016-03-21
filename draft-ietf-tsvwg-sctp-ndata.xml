@@ -5,11 +5,6 @@
 <?rfc subcompact="no" ?>
 <?rfc strict="yes" ?>
 
-<!-- FIXME: Address Karen's comments
-            Socket API (Schedulers)
-            Maybe focus on schedulers and take the view that I-DATA just allows more schedulers.
--->
-
 <rfc category="std"
      ipr="trust200902"
      docName="draft-ietf-tsvwg-sctp-ndata-05.txt">
@@ -18,6 +13,11 @@
        Stream Schedulers and User Message Interleaving
        for the Stream Control Transmission Protocol
 </title>
+
+<!--
+Issues:
+* Deal with late assignment in Stream Reset.
+-->
 
 <!-- *************** RANDALL STEWART *************** -->
 <author initials="R. R." surname="Stewart" fullname="Randall R. Stewart">
@@ -95,7 +95,7 @@ of user message interleaving, some do.</t>
 <section title="Introduction">
 <section title="Overview">
 <t>When SCTP <xref target='RFC4960'/> was initially designed it was mainly
-envisioned for transport of small signaling messages.
+envisioned for the transport of small signaling messages.
 Late in the design stage it was decided to add support for fragmentation and
 reassembly of larger messages with the thought that someday Session Initiation
 Protocol (SIP) <xref target='RFC3261'/> style signaling messages may also need
@@ -105,25 +105,79 @@ for other applications which might send very large messages over SCTP.
 When such large messages are now sent over SCTP a form of sender side head of
 line blocking becomes created within the protocol.
 This head of line blocking is caused by the use of the Transmission Sequence
-Number (TSN) for two different purposes:
+Number (TSN) for three different purposes:
 <list style="numbers">
 <t>As an identifier for DATA chunks to provide a reliable transfer.</t>
 <t>As an identifier for the sequence of fragments to allow reassembly.</t>
+<t>As a sequence number allowing to have up to 2**16 - 1 SSNs outstanding.</t>
 </list>
 The protocol requires all fragments of a user message to have consecutive
 TSNs. Therefore it is impossible for the sender to interleave different
 user messages.</t>
+<t>This document also defines several stream schedulers for general SCTP
+associations. If support for user message interleaving has been negotiated,
+several more schedulers are available.</t>
+<t>The following <xref target='RRwithoutMI'/> illustrates the
+behaviour of a round robin stream scheduler using DATA chunks.
+Please note that the use of such an scheduler implies late TSN assignment but
+it can be used with an <xref target='RFC4960'/> compliant implementation not
+supporting user message interleaving.</t>
+<figure title='Round Robin Scheduler without User Message Interleaving'
+        anchor='RRwithoutMI'>
+<artwork>
++---+---+---+
+|    0/0    |-+
++---+---+---+ |
+              |  +---+---+---+---+---+---+---+---+---+
++---+---+---+ +->|1/2|1/1|2/0|2/0|2/0|1/0|0/0|0/0|0/0|
+|1/2|1/1|1/0|--->|---|---|---|---|---|---|---|---|---|
++---+---+---+ +->| 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+              |  +---+---+---+---+---+---+---+---+---+
++---+---+---+ |
+|    2/0    |-+
++---+---+---+
+                               +-------+
+  +-------+                    |SID/SSN|
+  |SID/SSN|                    |-------|
+  +-------+                    |  TSN  |
+                               +-------+
+</artwork>
+</figure>
 <t>This document describes a new Data chunk called I-DATA.
 This chunk incorporates all the flags and fields except the Stream Sequence
 Number (SSN) and properties of the current SCTP Data chunk but also adds two
 new fields in its chunk header, the Fragment Sequence Number (FSN) and the
 Message Identifier (MID).
-Then the FSN is only used for reassembling all fragments with the same MID
-and the TSN only for the reliability.
-The MID is also used for ensuring ordered delivery, therefore replacing the
+Then the FSN is only used for reassembling all fragments having the same MID
+and ordering property. The TSN is only for the reliable transfer in combination
+with SACK chunks.</t>
+<t>The MID is also used for ensuring ordered delivery, therefore replacing the
 stream sequence number.
 Therefore, the head of line blocking caused by the original design is
 avoided.</t>
+<t>The following <xref target='RRwithMI'/> illustrates the behaviour
+of an interleaving round robin stream scheduler using I-DATA chunks.</t>
+<figure title='Round Robin Scheduler with User Message Interleaving'
+        anchor='RRwithMI'>
+<artwork>
++---+---+---+
+|    0/0    |-+
++---+---+---+ |
+              |  +-----+-----+-----+-----+-----+-----+-----+-----+-----+
++---+---+---+ +->|2/0/2|1/2/0|0/0/2|2/0/1|1/1/0|0/0/1|2/0/0|1/0/0|0/0/0|
+|1/2|1/1|1/0|--->|-----|-----|-----|-----|-----|-----|-----|-----|-----|
++---+---+---+ +->|  8  |  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
+              |  +-----+-----+-----+-----+-----+-----+-----+-----+-----+
++---+---+---+ |
+|    2/0    |-+
++---+---+---+
+                                     +-----------+
+  +-------+                          |SID/MID/FSN|
+  |SID/MID|                          |-----------|
+  +-------+                          |    TSN    |
+                                     +-----------+
+</artwork>
+</figure>
 <t>The support of the I-DATA chunk is negotiated during the association setup
 using the Supported Extensions Parameter as defined in
 <xref target='RFC5061'/>. If I-DATA support has been negotiated for an
@@ -131,9 +185,6 @@ association I-DATA chunks are used for all user-messages and no DATA chunks.
 It should be noted, that an SCTP implementation needs to support the
 coexistence of associations using DATA chunks and associations using I-DATA
 chunks.</t>
-<t>This document also defines several stream schedulers for general SCTP
-associations. If I-DATA support has been negotiated, several more schedulers
-are available.</t>
 </section>
 
 <section title="Conventions">
@@ -196,9 +247,10 @@ determine which fragments (enumerated by the FSN) belong to the same user
 message. For ordered user messages, the MID is also used by the SCTP receiver
 to deliver the user messages in the correct order to the upper layer (similar
 to the SSN of the DATA chunk defined in <xref target='RFC4960'/>).
-The sender uses two counters, one for ordered messages, one for unordered
-messages, for each outgoing streams. All counters are independent and initially
-0. They are incremented by 1 for each user message.
+The sender uses two counters for each outgoing streams,
+one for ordered messages, one for unordered messages.
+All counters are independent and initially 0.
+They are incremented by 1 for each user message.
 Please note that the serial number arithmetic defined in
 <xref target='RFC1982'/> using SERIAL_BITS = 32 applies.
 Therefore the sender MUST NOT have more than 2**31 - 1 ordered messages for
@@ -258,18 +310,21 @@ All other fragments MUST NOT have the 'B' or 'E' bit set.
 All other properties of the existing SCTP DATA chunk also apply to
 the I-DATA chunk, i.e. congestion control as well as receiver
 window conditions MUST be observed as defined in <xref target='RFC4960'/>.</t>
-<!-- FIXME: State that a each DATA chunk still needs a single TSN. (Lixia) -->
-<t>Note that the usage of this chunk should also imply late binding of the
-actual TSN to any chunk being sent.
-This way other messages from other streams may be interleaved with the
-fragmented message.</t>
+<t>Note that the usage of this chunk  implies the late assignment of the
+actual TSN to any chunk being sent. Each I-DATA chunk uses a single TSN.
+This way messages from other streams may be interleaved with the
+fragmented message. Please note that this is the only form of interleaving
+support. For example, it is not possible to interleave multiple ordered
+or unordered user messages from the same stream.</t>
 
-<t>The sender MUST NOT have more than one ordered fragmented message being
-produced in any one stream. The sender MUST NOT have more than one un-ordered
-fragmented message being produced in any one stream. The sender MAY have
-one ordered and one unordered fragmented message being produced within
-a single stream. At any time multiple streams MAY be producing an ordered
-or unordered fragmented message.</t>
+<t>The sender MUST NOT be fragmenting more than one ordered message
+in any one stream at any time.
+The sender MUST NOT be fragmenting more than one un-ordered
+user message in any one stream at any time.
+The sender MAY fragment one ordered and one unordered user message
+within a single stream.
+At any time a sender MAY fragment an ordered and an unordered
+user message each off them on different streams.</t>
 </section>
 
 <section title='Receiver Side Considerations'>
@@ -323,9 +378,11 @@ has been replaced by the 32-bit Message Identifier (MID).</t>
 <xref target='RFC6525'/>, the two counters (one for the ordered messages,
 one for the unordered messages) used for the MID MUST be reset to 0
 correspondingly.</t>
+<t>Since most schedulers require late TSN assignment, it should be noted
+that the implementation of <xref target='RFC6525'/> needs to handle this.</t>
+<!-- FIXME: Do we need to be more explicit here? -->
 </section>
 </section>
-<!-- Add an Examples section -->
 </section>
 
 <section title="Stream Schedulers">
@@ -344,12 +401,12 @@ It just passes through the messages in the order in which they have been
 delivered by the application. No modification of the order is done at all.</t>
 </section>
 <section anchor='sctp_ss_rr'
-         title='User Message Based Round Robin Scheduler (SCTP_SS_RR)'>
+         title='Round Robin Scheduler (SCTP_SS_RR)'>
 <t>This scheduler provides a fair scheduling based on the number of user messages
 by cycling around non-empty stream queues.</t>
 </section>
 <section anchor='sctp_ss_rr_pkt'
-         title='Packet Based Round Robin Scheduler (SCTP_SS_RR_PKT)'>
+         title='Round Robin Scheduler per Packet(SCTP_SS_RR_PKT)'>
 <t>This is a round-robin scheduler but only bundles user messages of the same
 stream in one packet. This minimizes head-of-line blocking when a packet
 is lost because only a single stream is affected.</t>
@@ -366,7 +423,7 @@ priority, the default scheduling should be used for them.</t>
 <t>A fair bandwidth distribution between the streams is used.
 This scheduler considers the lengths of the messages of each stream and
 schedules them in a certain way to maintain an equal bandwidth for all
-streams.</t>
+streams. The details are implementation specific.</t>
 </section>
 <section anchor='sctp_ss_wfq'
          title='Weighted Fair Queueing Scheduler (SCTP_SS_WFQ)'>
@@ -374,18 +431,18 @@ streams.</t>
 configurable per outgoing SCTP stream.
 This scheduler considers the lengths of the messages of each stream and
 schedules them in a certain way to use the bandwidth according to the given
-weights.</t>
+weights. The details are implementation specific.</t>
 </section>
 </section>
 <section anchor='ss_with_umi'
          title="Stream Scheduler with User Message Interleaving Support">
 <section anchor='sctp_ss_rr_inter'
-         title='User Message Based Round Robin Scheduler (SCTP_SS_RR_INTER)'>
+         title='Round Robin Scheduler (SCTP_SS_RR_INTER)'>
 <t>This scheduler is similar to the one described in <xref target='sctp_ss_rr'/>,
 but based on I-DATA chunks instead of user messages.</t>
 </section>
 <section anchor='sctp_ss_rr_pkt_inter'
-         title='Packet Based Round Robin Scheduler (SCTP_SS_RR_PKT_INTER)'>
+         title='Round Robin Scheduler per Packet (SCTP_SS_RR_PKT_INTER)'>
 <t>This scheduler is similar to the one described in <xref target='sctp_ss_rr_pkt'/>,
 but based on I-DATA chunks instead of user messages.</t>
 </section>
@@ -434,11 +491,11 @@ SCTP_ASSOC_SUPPORTS_INTERLEAVING should be listen in the sac_info field.</t>
 <ttcol align='center'>get</ttcol>
 <ttcol align='center'>set</ttcol>
 <c>SCTP_INTERLEAVING_SUPPORTED</c> <c>struct sctp_assoc_value </c> <c>X</c> <c>X</c>
-<c>SCTP_PLUGGABLE_SS          </c> <c>struct sctp_assoc_value </c> <c>X</c> <c>X</c>
-<c>SCTP_SS_VALUE              </c> <c>struct sctp_stream_value</c> <c>X</c> <c>X</c>
+<c>SCTP_STREAM_SCHEDULER      </c> <c>struct sctp_assoc_value </c> <c>X</c> <c>X</c>
+<c>SCTP_STREAM_SCHEDULER_VALUE</c> <c>struct sctp_stream_value</c> <c>X</c> <c>X</c>
 </texttable>
 
-<section title="Enable or Disable the Support of User Message Interleaving">
+<section title="Enable or Disable the Support of User Message Interleaving (SCTP_INTERLEAVING_SUPPORTED)">
 <t>This socket option allows the enabling or disabling of the negotiation
 of user message interleaving support for future associations.
 For existing associations it allows to query whether user message interleaving
@@ -469,17 +526,20 @@ a value of 0 encodes the disabling of user message interleaving.</t>
 </list></t>
 <t>sctp_opt_info() needs to be extended to support SCTP_INTERLEAVING_SUPPORTED.</t>
 <t>An application using user message interleaving should also set the fragment
-interleave level to 2. This allows the reception from multiple streams
-simultaneously. Failure to set this option can possibly lead to application
-deadlock.</t>
+interleave level to 2 by using the SCTP_FRAGMENT_INTERLEAVE socket option
+specified in Section 8.1.20 of <xref target='RFC6458'/>.
+This allows the reception from multiple streams simultaneously.
+Failure to set this option can possibly lead to application deadlock.
+Some implementations might therefore put some restrictions on setting
+combinations of these values.</t>
 <!-- FIXME: Same socket option on the sender side? What about specifying stream
      schedulers in this document. Interleaving with FCFS doesn't make much
      sense... -->
 <!-- FIXME: Interaction with EEOR-Mode needs to be handled. -->
 </section>
 
-<section title="Get or Set the Stream Scheduler (SCTP_PLUGGABLE_SS)">
-<t>A stream scheduler can be selected with the SCTP_PLUGGABLE_SS
+<section title="Get or Set the Stream Scheduler (SCTP_STREAM_SCHEDULER)">
+<t>A stream scheduler can be selected with the SCTP_STREAM_SCHEDULER
 option for setsockopt(). The struct sctp_assoc_value is used to
 specify the association for which the scheduler should be changed
 and the value of the desired algorithm.</t>
@@ -546,13 +606,13 @@ The weight can be assigned with the sctp_stream_value struct.</t>
 </list></t>
 </section>
 
-<section title="Get or Set the Stream Scheduler Parameter (SCTP_SS_VALUE)">
+<section title="Get or Set the Stream Scheduler Parameter (SCTP_STREAM_SCHEDULER_VALUE)">
 <t>Some schedulers require additional information to be set for single streams
 as shown in the following table:</t>
 <texttable>
 <ttcol align='left'>name</ttcol>
 <ttcol align='center'>per stream info</ttcol>
-<c>SCTP_SS_DEFAULT</c>            <c>no</c>
+<c>SCTP_SS_DEFAULT</c>            <c>n/a</c>
 <c>SCTP_SS_FCFS</c>               <c>no</c>
 <c>SCTP_SS_RR</c>                 <c>no</c>
 <c>SCTP_SS_RR_PKT</c>             <c>no</c>
@@ -565,8 +625,8 @@ as shown in the following table:</t>
 <c>SCTP_SS_FB_INTER</c>           <c>no</c>
 <c>SCTP_SS_WFQ_INTER</c>          <c>yes</c>
 </texttable>
-<t>This is achieved with the SCTP_SS_VALUE option and the corresponding struct
-sctp_stream_value.
+<t>This is achieved with the SCTP_STREAM_SCHEDULER_VALUE option and the
+corresponding struct sctp_stream_value.
 The definition of struct sctp_stream_value is as follows:</t>
 <figure>
 <artwork>
@@ -648,8 +708,12 @@ in addition to the ones given in <xref target='RFC4960'/> and
 Christer Holmberg,
 Karen E. Egede Nielsen,
 Irene Ruengeler,
+Felix Weinrank,
 and Lixia Zhang
 for her invaluable comments.</t>
+<t>This work has received funding from the European Union's Horizon 2020
+research and innovation programme under grant agreement No. 644334 (NEAT).
+The views expressed are solely those of the author(s).</t>
 </section>
 
 </middle>
