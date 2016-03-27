@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_indata.c 297208 2016-03-23 13:28:04Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_indata.c 297312 2016-03-27 10:04:25Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -2447,7 +2447,7 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 					if (op_err != NULL) {
 						cause  = mtod(op_err, struct sctp_gen_error_cause *);
 						cause->code = htons(SCTP_CAUSE_UNRECOG_CHUNK);
-						cause->length = htons(chk_length + sizeof(struct sctp_gen_error_cause));
+						cause->length = htons((uint16_t)(chk_length + sizeof(struct sctp_gen_error_cause)));
 						SCTP_BUF_LEN(op_err) = sizeof(struct sctp_gen_error_cause);
 						SCTP_BUF_NEXT(op_err) = SCTP_M_COPYM(m, *offset, chk_length, M_NOWAIT);
 						if (SCTP_BUF_NEXT(op_err) != NULL) {
@@ -2637,7 +2637,7 @@ sctp_process_segment_range(struct sctp_tcb *stcb, struct sctp_tmit_chunk **p_tp1
 							sctp_misc_ints(SCTP_FLIGHT_LOG_DOWN_GAP,
 								       tp1->whoTo->flight_size,
 								       tp1->book_size,
-								       (uintptr_t)tp1->whoTo,
+								       (uint32_t)(uintptr_t)tp1->whoTo,
 								       tp1->rec.data.TSN_seq);
 						}
 						sctp_flight_size_decrease(tp1);
@@ -2843,7 +2843,7 @@ sctp_check_for_revoked(struct sctp_tcb *stcb,
 					sctp_misc_ints(SCTP_FLIGHT_LOG_UP_REVOKE,
 						       tp1->whoTo->flight_size,
 						       tp1->book_size,
-						       (uintptr_t)tp1->whoTo,
+						       (uint32_t)(uintptr_t)tp1->whoTo,
 						       tp1->rec.data.TSN_seq);
 				}
 				sctp_flight_size_increase(tp1);
@@ -3154,7 +3154,7 @@ sctp_strike_gap_ack_chunks(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				sctp_misc_ints(SCTP_FLIGHT_LOG_DOWN_RSND,
 					       (tp1->whoTo ? (tp1->whoTo->flight_size) : 0),
 					       tp1->book_size,
-					       (uintptr_t)tp1->whoTo,
+					       (uint32_t)(uintptr_t)tp1->whoTo,
 					       tp1->rec.data.TSN_seq);
 			}
 			if (tp1->whoTo) {
@@ -3456,7 +3456,7 @@ sctp_window_probe_recovery(struct sctp_tcb *stcb,
 		sctp_misc_ints(SCTP_FLIGHT_LOG_DWN_WP_FWD,
 			       tp1->whoTo ? tp1->whoTo->flight_size : 0,
 			       tp1->book_size,
-			       (uintptr_t)tp1->whoTo,
+			       (uint32_t)(uintptr_t)tp1->whoTo,
 			       tp1->rec.data.TSN_seq);
 		return;
 	}
@@ -3475,7 +3475,7 @@ sctp_window_probe_recovery(struct sctp_tcb *stcb,
 		sctp_misc_ints(SCTP_FLIGHT_LOG_DOWN_WP,
 			       tp1->whoTo->flight_size,
 			       tp1->book_size,
-			       (uintptr_t)tp1->whoTo,
+			       (uint32_t)(uintptr_t)tp1->whoTo,
 			       tp1->rec.data.TSN_seq);
 	}
 }
@@ -3595,7 +3595,7 @@ sctp_express_handle_sack(struct sctp_tcb *stcb, uint32_t cumack,
 							sctp_misc_ints(SCTP_FLIGHT_LOG_DOWN_CA,
 								       tp1->whoTo->flight_size,
 								       tp1->book_size,
-								       (uintptr_t)tp1->whoTo,
+								       (uint32_t)(uintptr_t)tp1->whoTo,
 								       tp1->rec.data.TSN_seq);
 						}
 						sctp_flight_size_decrease(tp1);
@@ -4254,7 +4254,7 @@ sctp_handle_sack(struct mbuf *m, int offset_seg, int offset_dup,
 							sctp_misc_ints(SCTP_FLIGHT_LOG_DOWN_CA,
 							               tp1->whoTo->flight_size,
 							               tp1->book_size,
-							               (uintptr_t)tp1->whoTo,
+							               (uint32_t)(uintptr_t)tp1->whoTo,
 							               tp1->rec.data.TSN_seq);
 						}
 						sctp_flight_size_decrease(tp1);
@@ -4552,7 +4552,7 @@ sctp_handle_sack(struct mbuf *m, int offset_seg, int offset_dup,
 					sctp_misc_ints(SCTP_FLIGHT_LOG_UP_REVOKE,
 					               tp1->whoTo->flight_size,
 					               tp1->book_size,
-					               (uintptr_t)tp1->whoTo,
+					               (uint32_t)(uintptr_t)tp1->whoTo,
 					               tp1->rec.data.TSN_seq);
 				}
 				sctp_flight_size_increase(tp1);
