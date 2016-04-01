@@ -6,11 +6,11 @@ for testing the SCTP stack of the FreeBSD kernel.
 | Name                                                                                             | Verdict stable/10 | Verdict head |
 |:-------------------------------------------------------------------------------------------------|:-----------------:|:------------:|
 |[sctp-idata-01](sctp-idata-01.pkt "Receive two consequtive complete messages on the same stream") | Failed            | Failed       |
-|[sctp-idata-02](sctp-idata-02.pkt "Receive two consequtive complete messages on the same stream") | Passed            | Passed       |
-|[sctp-idata-03](sctp-idata-03.pkt "Receive two consequtive complete messages on the same stream") | Passed            | Passed       |
-|[sctp-idata-04](sctp-idata-04.pkt "Receive two consequtive complete messages on the same stream") | Passed            | Passed       |
-|[sctp-idata-05](sctp-idata-05.pkt "Receive two consequtive complete messages on the same stream") | Passed            | Passed       |
-|[sctp-idata-06](sctp-idata-06.pkt "Receive two consequtive complete messages on the same stream") | Failed            | Failed       |
+|[sctp-idata-02](sctp-idata-02.pkt "Handling of I-DATA chunk without enabling interleaving suport")| Passed            | Passed       |
+|[sctp-idata-03](sctp-idata-03.pkt "Handling of missing B-bit for first message on a stream")      | Passed            | Passed       |
+|[sctp-idata-04](sctp-idata-04.pkt "Handling of DATA chunk without user data")                     | Passed            | Passed       |
+|[sctp-idata-05](sctp-idata-05.pkt "Handling of consequtive DATA chunks with flags: B;B")          | Passed            | Passed       |
+|[sctp-idata-06](sctp-idata-06.pkt "Handling of consequtive DATA chunks with flags: BE;E")         | Failed            | Failed       |
 |[sctp-idata-07](sctp-idata-07.pkt "Receive two consequtive complete messages on the same stream") | Passed            | Passed       |
 |[sctp-idata-08](sctp-idata-08.pkt "Receive two consequtive complete messages on the same stream") | Passed            | Passed       |
 |[sctp-idata-09](sctp-idata-09.pkt "Receive two consequtive complete messages on the same stream") | Passed            | Passed       |
