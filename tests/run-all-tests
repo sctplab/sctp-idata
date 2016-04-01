@@ -28,7 +28,26 @@
 
 set packetdrill = /home/tuexen/packetdrill/gtests/net/packetdrill/packetdrill
 set delay = 1
-set testcases = (receive-two-messages.pkt )
+set testcases = (sctp-idata-01 \
+                 sctp-idata-02 \
+                 sctp-idata-03 \
+                 sctp-idata-04 \
+                 sctp-idata-05 \
+                 sctp-idata-06 \
+                 sctp-idata-07 \
+                 sctp-idata-08 \
+                 sctp-idata-09 \
+                 sctp-idata-10 \
+                 sctp-idata-11 \
+                 sctp-idata-12 \
+                 sctp-idata-13 \
+                 sctp-idata-14 \
+#                 sctp-idata-15 \
+                 sctp-idata-16 \
+                 sctp-idata-17 \
+                 sctp-idata-18 \
+                 sctp-idata-19 \
+                 sctp-idata-20 )
 
 set rootdir = `/usr/bin/dirname $0`
 set passed = 0
