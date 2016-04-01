@@ -1,4 +1,5 @@
 //
+// Copyright (C) 2014 Irene Ruengeler
 // Copyright (c) 2016 Michael Tuexen
 // All rights reserved.
 //
@@ -24,32 +25,27 @@
 // SUCH DAMAGE.
 //
 
-// Create a passive non-blocking 1-to-1 style socket supporting I-DATA.
+// Create a passive non-blocking 1-to-1 style socket not supporting I-DATA.
 +0.0 socket(..., SOCK_STREAM, IPPROTO_SCTP) = 3
 +0.0 fcntl(3, F_GETFL) = 0x02 (flags O_RDWR)
 +0.0 fcntl(3, F_SETFL, O_RDWR | O_NONBLOCK) = 0
-+0.0 setsockopt(3, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, [2], 4) = 0
-+0.0 setsockopt(3, IPPROTO_SCTP, SCTP_INTERLEAVING_SUPPORTED, {assoc_value=1}, 8) = 0
++0.0 setsockopt(3, IPPROTO_SCTP, SCTP_INITMSG, {sinit_num_ostreams=1,
+                                                sinit_max_instreams=1,
+                                                sinit_max_attempts=0,
+                                                sinit_max_init_timeo=0}, 8) = 0
 +0.0 bind(3, ..., ...) = 0
 +0.0 listen(3, 1) = 0
-// Establish an association supporting I-DATA.
+// Establish an association not supporting I-DATA.
 +0.0 < sctp: INIT[flgs=0, tag=1, a_rwnd=1500, os=1, is=1, tsn=1,
                   SUPPORTED_EXTENSIONS[types=[I-DATA]]]
-+0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=..., os=..., is=..., tsn=1, ...]
++0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=..., os=1, is=1, tsn=1, ...]
 +0.1 < sctp: COOKIE_ECHO[flgs=0, len=..., val=...]
 +0.0 > sctp: COOKIE_ACK[flgs=0]
 +0.0 accept(3, ..., ...) = 4
 +0.0 close(3) = 0
-// Inject the first I-DATA chunk.
-+0.1 < sctp: I-DATA[flgs=BE, len=24, tsn=1, sid=0, mid=0, ppid=1234]
+// Inject two DATA chunks
++0.1 < sctp: DATA[flgs=B, len=20, tsn=1, sid=0, ssn=0, ppid=1234]
 +0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=..., gaps=[], dups=[]]
-+0.0 recv(4, ..., 100, 0) = 4
-// Inject the second I-DATA chunk.
-+0.1 < sctp: I-DATA[flgs=BE, len=24, tsn=2, sid=0, mid=1, ppid=1234]
-+0.2 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=..., gaps=[], dups=[]]
-+0.0 recv(4, ..., 100, 0) = 4
-// Tear down the association.
-+0.1 < sctp: SHUTDOWN[flgs=0, cum_tsn=0]
-+0.0 > sctp: SHUTDOWN_ACK[flgs=0]
-+0.1 < sctp: SHUTDOWN_COMPLETE[flgs=0]
++0.1 < sctp: DATA[flgs=BE, len=20, tsn=2, sid=0, ssn=0, ppid=1234]
++0.0 > sctp: ABORT[flgs=0, PROTOCOL_VIOLATION[info=...]]
 +0.0 close(4) = 0
