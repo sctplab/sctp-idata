@@ -1141,7 +1141,6 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	uint32_t next_fsn;
 	struct sctp_tmit_chunk *at, *nat;
 	int cnt_added;
-	int last_frag;
 	/* Must be added to the stream-in queue */
 	if (created_control) {
 		if (sctp_place_control_in_stream(strm, asoc, control)) {
@@ -1274,18 +1273,8 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				/* We can add this one now to the control */
 				next_fsn++;
 				TAILQ_REMOVE(&control->reasm, at, sctp_next);
-				if (at->rec.data.rcv_flags & SCTP_DATA_LAST_FRAG) {
-					last_frag = 1;
-				} else {
-					last_frag = 0;
-				}
 				sctp_add_chk_to_control(control, stcb, asoc, at);
 				cnt_added++;
-				if (last_frag) {
-					printf("Last frag seen end:%d pd:%d on_read_q:%d end_added:%d cnt:%d\n",
-					       last_frag, strm->pd_api_started, control->on_read_q,
-					       control->end_added, cnt_added);
-				}
 				if (control->on_read_q && strm->pd_api_started && control->end_added) {
 					/* Ok end is on, and we were the pd-api guy clear the flag */
 					printf("pd-api Ends 1 %p\n",
