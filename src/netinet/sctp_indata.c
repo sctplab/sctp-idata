@@ -1334,12 +1334,14 @@ find_reasm_entry(struct sctp_stream_in *strm, uint32_t msg_id, int ordered, int 
 
 static int
 sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
-			  struct mbuf **m, int offset, struct sctp_data_chunk *ch, int chk_length,
+			  struct mbuf **m, int offset,  int chk_length,
 			  struct sctp_nets *net, uint32_t *high_tsn, int *abort_flag,
 			  int *break_flag, int last_chunk, uint8_t chtype)
 {
 	/* Process a data chunk */
 	/* struct sctp_tmit_chunk *chk; */
+	struct sctp_data_chunk *ch;
+	struct sctp_idata_chunk *nch, chunk_buf;
 	struct sctp_tmit_chunk *chk;
 	uint32_t tsn, fsn, gap, msg_id;
 	struct mbuf *dmbuf;
@@ -1352,24 +1354,46 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	uint32_t protocol_id;
 	uint8_t chunk_flags;
 	struct sctp_stream_reset_list *liste;
-	struct sctp_idata_chunk *nch;
 	struct sctp_stream_in *strm;
 	int ordered;
+	size_t clen;
 	int created_control = 0;
 	uint8_t old_data;
 
 	chk = NULL;
-	tsn = ntohl(ch->dp.tsn);
 	if (chtype == SCTP_IDATA) {
-		nch = (struct sctp_idata_chunk *)ch;
+		nch = (struct sctp_idata_chunk *)sctp_m_getptr(*m, offset,
+							     sizeof(struct sctp_idata_chunk), (uint8_t *) &chunk_buf);
+
+		ch = (struct sctp_data_chunk *)nch;
+		clen = sizeof(struct sctp_idata_chunk);
+		tsn = ntohl(ch->dp.tsn);
 		msg_id = ntohl(nch->dp.msg_id);
 		fsn = ntohl(nch->dp.fsn);
 		old_data = 0;
 	} else {
+		ch = (struct sctp_data_chunk *)sctp_m_getptr(*m, offset,
+							     sizeof(struct sctp_data_chunk), (uint8_t *) &chunk_buf);
+
+		tsn = ntohl(ch->dp.tsn);
+		clen = sizeof(struct sctp_data_chunk);
 		fsn = tsn;
 		msg_id = (uint32_t)(ntohs(ch->dp.stream_sequence));
 		nch = NULL;
 		old_data = 1;
+	}
+	if ((size_t)chk_length == clen) {
+		/*
+		 * Need to send an abort since we had a
+		 * empty data chunk.
+		 */
+		struct mbuf *op_err;
+
+		op_err = sctp_generate_no_user_data_cause(ch->dp.tsn);
+		stcb->sctp_ep->last_abort_code = SCTP_FROM_SCTP_INDATA + SCTP_LOC_22;
+		sctp_abort_an_association(stcb->sctp_ep, stcb, op_err, SCTP_SO_NOT_LOCKED);
+		*abort_flag = 1;
+		return (0);
 	}
 	chunk_flags = ch->ch.chunk_flags;
 	ordered = ((chunk_flags & SCTP_DATA_UNORDERED) == 0);
@@ -2232,7 +2256,7 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
                   struct sctp_inpcb *inp, struct sctp_tcb *stcb,
                   struct sctp_nets *net, uint32_t *high_tsn)
 {
-	struct sctp_data_chunk *ch, chunk_buf;
+	struct sctp_chunkhdr *ch, chunk_buf;
 	struct sctp_association *asoc;
 	int num_chunks = 0;	/* number of control chunks processed */
 	int stop_proc = 0;
@@ -2291,8 +2315,8 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 	}
 #endif
 	/* get pointer to the first chunk header */
-	ch = (struct sctp_data_chunk *)sctp_m_getptr(m, *offset,
-						     sizeof(struct sctp_data_chunk), (uint8_t *) & chunk_buf);
+	ch = (struct sctp_chunkhdr *)sctp_m_getptr(m, *offset,
+						     sizeof(struct sctp_chunkhdr), (uint8_t *) & chunk_buf);
 	if (ch == NULL) {
 		return (1);
 	}
@@ -2304,14 +2328,14 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 	asoc->data_pkts_seen++;
 	while (stop_proc == 0) {
 		/* validate chunk length */
-		chk_length = ntohs(ch->ch.chunk_length);
+		chk_length = ntohs(ch->chunk_length);
 		if (length - *offset < chk_length) {
 			/* all done, mutulated chunk */
 			stop_proc = 1;
 			continue;
 		}
 		if ((asoc->idata_supported == 1) &&
-		    (ch->ch.chunk_type == SCTP_DATA)) {
+		    (ch->chunk_type == SCTP_DATA)) {
 			struct mbuf *op_err;
 			char msg[SCTP_DIAG_INFO_LEN];
 
@@ -2322,7 +2346,7 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 			return (2);
 		}
 		if ((asoc->idata_supported == 0) &&
-		    (ch->ch.chunk_type == SCTP_IDATA)) {
+		    (ch->chunk_type == SCTP_IDATA)) {
 			struct mbuf *op_err;
 			char msg[SCTP_DIAG_INFO_LEN];
 
@@ -2332,10 +2356,10 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 			sctp_abort_an_association(inp, stcb, op_err, SCTP_SO_NOT_LOCKED);
 			return (2);
 		}
-		if ((ch->ch.chunk_type == SCTP_DATA) ||
-		    (ch->ch.chunk_type == SCTP_IDATA)) {
+		if ((ch->chunk_type == SCTP_DATA) ||
+		    (ch->chunk_type == SCTP_IDATA)) {
 			int clen;
-			if (ch->ch.chunk_type == SCTP_DATA) {
+			if (ch->chunk_type == SCTP_DATA) {
 				clen = sizeof(struct sctp_data_chunk);
 			} else {
 				clen = sizeof(struct sctp_idata_chunk);
@@ -2355,18 +2379,6 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 				sctp_abort_an_association(inp, stcb, op_err, SCTP_SO_NOT_LOCKED);
 				return (2);
 			}
-			if ((size_t)chk_length == clen) {
-				/*
-				 * Need to send an abort since we had a
-				 * empty data chunk.
-				 */
-				struct mbuf *op_err;
-
-				op_err = sctp_generate_no_user_data_cause(ch->dp.tsn);
-				stcb->sctp_ep->last_abort_code = SCTP_FROM_SCTP_INDATA + SCTP_LOC_22;
-				sctp_abort_an_association(inp, stcb, op_err, SCTP_SO_NOT_LOCKED);
-				return (2);
-			}
 #ifdef SCTP_AUDITING_ENABLED
 			sctp_audit_log(0xB1, 0);
 #endif
@@ -2375,9 +2387,9 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 			} else {
 				last_chunk = 0;
 			}
-			if (sctp_process_a_data_chunk(stcb, asoc, mm, *offset, ch,
+			if (sctp_process_a_data_chunk(stcb, asoc, mm, *offset, 
 						      chk_length, net, high_tsn, &abort_flag, &break_flag,
-						      last_chunk, ch->ch.chunk_type)) {
+						      last_chunk, ch->chunk_type)) {
 				num_chunks++;
 			}
 			if (abort_flag)
@@ -2393,7 +2405,7 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 			}
 		} else {
 			/* not a data chunk in the data region */
-			switch (ch->ch.chunk_type) {
+			switch (ch->chunk_type) {
 			case SCTP_INITIATION:
 			case SCTP_INITIATION_ACK:
 			case SCTP_SELECTIVE_ACK:
@@ -2429,15 +2441,15 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 					char msg[SCTP_DIAG_INFO_LEN];
 
 					snprintf(msg, sizeof(msg), "DATA chunk followed by chunk of type %2.2x",
-					         ch->ch.chunk_type);
+					         ch->chunk_type);
 					op_err = sctp_generate_cause(SCTP_CAUSE_PROTOCOL_VIOLATION, msg);
 					sctp_abort_an_association(inp, stcb, op_err, SCTP_SO_NOT_LOCKED);
 					return (2);
-				}
+				} 
 				break;
 			default:
 				/* unknown chunk type, use bit rules */
-				if (ch->ch.chunk_type & 0x40) {
+				if (ch->chunk_type & 0x40) {
 					/* Add a error report to the queue */
 					struct mbuf *op_err;
 					struct sctp_gen_error_cause *cause;
@@ -2457,7 +2469,7 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 						}
 					}
 				}
-				if ((ch->ch.chunk_type & 0x80) == 0) {
+				if ((ch->chunk_type & 0x80) == 0) {
 					/* discard the rest of this packet */
 					stop_proc = 1;
 				}	/* else skip this bad chunk and
@@ -2471,8 +2483,8 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 			stop_proc = 1;
 			continue;
 		}
-		ch = (struct sctp_data_chunk *)sctp_m_getptr(m, *offset,
-							     sizeof(struct sctp_data_chunk), (uint8_t *) & chunk_buf);
+		ch = (struct sctp_chunkhdr *)sctp_m_getptr(m, *offset,
+							     sizeof(struct sctp_chunkhdr), (uint8_t *) & chunk_buf);
 		if (ch == NULL) {
 			*offset = length;
 			stop_proc = 1;
