@@ -480,7 +480,7 @@ described in this document.</t>
 <t>When an SCTP_ASSOC_CHANGE notification is delivered indicating
 a sac_state of SCTP_COMM_UP or SCTP_RESTART for an SCTP association
 where both peers support the I-DATA chunk,
-SCTP_ASSOC_SUPPORTS_INTERLEAVING should be listen in the sac_info field.</t>
+SCTP_ASSOC_SUPPORTS_INTERLEAVING should be listed in the sac_info field.</t>
 </section>
 
 <section title="Socket Options">
