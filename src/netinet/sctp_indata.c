@@ -1331,30 +1331,6 @@ find_reasm_entry(struct sctp_stream_in *strm, uint32_t msg_id, int ordered, int 
 	return(reasm);
 }
 
-static struct sctp_queued_to_read *
-find_reasm_entry_too(struct sctp_stream_in *strm, uint16_t stream, uint16_t seq, int ordered, int old)
-{
-	struct sctp_queued_to_read *reasm;
-	if (ordered) {
-		TAILQ_FOREACH(reasm, &strm->inqueue, next_instrm) {
-			if ((reasm->sinfo_stream == stream) &&
-			    (reasm->sinfo_ssn == seq)) {
-				break;
-			}
-		}
-	} else {
-		if (old) {
-			return(TAILQ_FIRST(&strm->uno_inqueue));
-		}
-		TAILQ_FOREACH(reasm, &strm->uno_inqueue, next_instrm) {
-			if (reasm->sinfo_stream == stream) {
-				break;
-			}
-		}
-	}
-	return(reasm);
-}
-
 
 static int
 sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
@@ -1369,14 +1345,14 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	struct mbuf *dmbuf;
 	int the_len;
 	int need_reasm_check = 0;
-	uint16_t strmno, strmseq;
+	uint16_t strmno;
 	struct mbuf *op_err;
 	char msg[SCTP_DIAG_INFO_LEN];
 	struct sctp_queued_to_read *control=NULL;
 	uint32_t protocol_id;
 	uint8_t chunk_flags;
 	struct sctp_stream_reset_list *liste;
-	struct sctp_ndata_chunk *nch;
+	struct sctp_idata_chunk *nch;
 	struct sctp_stream_in *strm;
 	int ordered;
 	int created_control = 0;
@@ -1384,8 +1360,8 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 
 	chk = NULL;
 	tsn = ntohl(ch->dp.tsn);
-	if (chtype == SCTP_NDATA) {
-		nch = (struct sctp_ndata_chunk *)ch;
+	if (chtype == SCTP_IDATA) {
+		nch = (struct sctp_idata_chunk *)ch;
 		msg_id = ntohl(nch->dp.msg_id);
 		fsn = ntohl(nch->dp.fsn);
 		old_data = 0;
@@ -1472,6 +1448,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 
 	/* Is the stream valid? */
 	strmno = ntohs(ch->dp.stream_id);
+
 	if (strmno >= asoc->streamincnt) {
 		struct sctp_error_invalid_stream *cause;
 
@@ -1506,7 +1483,6 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		return (0);
 	}
 	strm = &asoc->strmin[strmno];
-	strmseq = ntohs(ch->dp.stream_sequence);
 	/*
 	 * If we are using NDATA, and not we are a fragmented
 	 * message, see if we have control chunk for reassembly
@@ -1517,7 +1493,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		control = find_reasm_entry(strm, msg_id, ordered, old_data);
 		if (control) {
 			/* We found something, does it belong? */
-			if (ordered && (strmseq != control->sinfo_ssn)) {
+			if (ordered && (msg_id != control->sinfo_ssn)) {
 			err_out:
 				op_err = sctp_generate_cause(SCTP_CAUSE_PROTOCOL_VIOLATION, msg);
 				stcb->sctp_ep->last_abort_code = SCTP_FROM_SCTP_INDATA + SCTP_LOC_7;
@@ -1540,7 +1516,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		 * the same Stream/Seq (for ordered) or in
 		 * the same Stream for unordered.
 		 */
-		if (find_reasm_entry_too(strm, strmno, strmseq, ordered, old_data)) {
+		if (find_reasm_entry(strm, msg_id, ordered, old_data)) {
 			goto err_out;
 		}
 	}
@@ -1609,7 +1585,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	}
 	asoc->in_tsnlog[asoc->tsn_in_at].tsn = tsn;
 	asoc->in_tsnlog[asoc->tsn_in_at].strm = strmno;
-	asoc->in_tsnlog[asoc->tsn_in_at].seq = strmseq;
+	asoc->in_tsnlog[asoc->tsn_in_at].seq = msg_id;
 	asoc->in_tsnlog[asoc->tsn_in_at].sz = chk_length;
 	asoc->in_tsnlog[asoc->tsn_in_at].flgs = chunk_flags;
 	asoc->in_tsnlog[asoc->tsn_in_at].stcb = (void *)stcb;
@@ -1627,14 +1603,16 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	if ((chunk_flags & SCTP_DATA_FIRST_FRAG) &&
 	    (TAILQ_EMPTY(&asoc->resetHead)) &&
 	    (chunk_flags & SCTP_DATA_UNORDERED) == 0 &&
-	    SCTP_SSN_GE(asoc->strmin[strmno].last_sequence_delivered, strmseq)) {
+	    SCTP_MSGID_GE(old_data, asoc->strmin[strmno].last_sequence_delivered, msg_id)) {
 		/* The incoming sseq is behind where we last delivered? */
+		printf("EVIL/Broken-Dup S-SEQ:%d delivered:%d from peer, Abort! old:%d\n",
+		       msg_id, asoc->strmin[strmno].last_sequence_delivered, old_data);
 		SCTPDBG(SCTP_DEBUG_INDATA1, "EVIL/Broken-Dup S-SEQ:%d delivered:%d from peer, Abort!\n",
-			strmseq, asoc->strmin[strmno].last_sequence_delivered);
+			msg_id, asoc->strmin[strmno].last_sequence_delivered);
 
 		snprintf(msg, sizeof(msg), "Delivered SSN=%4.4x, got TSN=%8.8x, SID=%4.4x, SSN=%4.4x",
 		         asoc->strmin[strmno].last_sequence_delivered,
-		         tsn, strmno, strmseq);
+		         tsn, strmno, msg_id);
 		op_err = sctp_generate_cause(SCTP_CAUSE_PROTOCOL_VIOLATION, msg);
 		stcb->sctp_ep->last_abort_code = SCTP_FROM_SCTP_INDATA + SCTP_LOC_8;
 		sctp_abort_an_association(stcb->sctp_ep, stcb, op_err, SCTP_SO_NOT_LOCKED);
@@ -1646,14 +1624,14 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	 * so its a good idea NOT to use it.
 	 *************************************/
 	if (nch) {
-		the_len = (chk_length - sizeof(struct sctp_ndata_chunk));
+		the_len = (chk_length - sizeof(struct sctp_idata_chunk));
 	} else {
 		the_len = (chk_length - sizeof(struct sctp_data_chunk));
 	}
 	if (last_chunk == 0) {
 		if (nch) {
 			dmbuf = SCTP_M_COPYM(*m,
-					     (offset + sizeof(struct sctp_ndata_chunk)),
+					     (offset + sizeof(struct sctp_idata_chunk)),
 					     the_len, M_NOWAIT);
 		} else {
 			dmbuf = SCTP_M_COPYM(*m,
@@ -1671,7 +1649,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		dmbuf = *m;
 		/* lop off the top part */
 		if (nch) {
-			m_adj(dmbuf, (offset + sizeof(struct sctp_ndata_chunk)));
+			m_adj(dmbuf, (offset + sizeof(struct sctp_idata_chunk)));
 		} else {
 			m_adj(dmbuf, (offset + sizeof(struct sctp_data_chunk)));
 		}
@@ -1706,7 +1684,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		sctp_alloc_a_readq(stcb, control);
 		sctp_build_readq_entry_mac(control, stcb, asoc->context, net, tsn,
 					   protocol_id,
-					   strmno, strmseq,
+					   strmno, msg_id,
 					   chunk_flags,
 					   NULL, fsn, msg_id);
 		if (control == NULL) {
@@ -1723,7 +1701,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	if ((chunk_flags & SCTP_DATA_NOT_FRAG) == SCTP_DATA_NOT_FRAG &&
 	    TAILQ_EMPTY(&asoc->resetHead) &&
 	    ((ordered == 0) ||
-	     ((uint16_t)(asoc->strmin[strmno].last_sequence_delivered + 1) == strmseq &&
+	     ((uint16_t)(asoc->strmin[strmno].last_sequence_delivered + 1) == msg_id &&
 	      TAILQ_EMPTY(&asoc->strmin[strmno].inqueue)))) {
 		/* Candidate for express delivery */
 		/*
@@ -1747,7 +1725,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		}
 		SCTP_STAT_INCR(sctps_recvexpress);
 		if (SCTP_BASE_SYSCTL(sctp_logging_level) & SCTP_STR_LOGGING_ENABLE) {
-			sctp_log_strm_del_alt(stcb, tsn, strmseq, strmno,
+			sctp_log_strm_del_alt(stcb, tsn, msg_id, strmno,
 					      SCTP_STR_LOG_FROM_EXPRS_DEL);
 		}
 		control = NULL;
@@ -1769,7 +1747,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		chk->rec.data.TSN_seq = tsn;
 		chk->no_fr_allowed = 0;
 		chk->rec.data.fsn_num = fsn;
-		chk->rec.data.stream_seq = strmseq;
+		chk->rec.data.stream_seq = msg_id;
 		chk->rec.data.stream_number = strmno;
 		chk->rec.data.payloadtype = protocol_id;
 		chk->rec.data.context = stcb->asoc.context;
@@ -1888,7 +1866,7 @@ finish_express_del:
 	SCTP_STAT_INCR(sctps_recvdata);
 	/* Set it present please */
 	if (SCTP_BASE_SYSCTL(sctp_logging_level) & SCTP_STR_LOGGING_ENABLE) {
-		sctp_log_strm_del_alt(stcb, tsn, strmseq, strmno, SCTP_STR_LOG_FROM_MARK_TSN);
+		sctp_log_strm_del_alt(stcb, tsn, msg_id, strmno, SCTP_STR_LOG_FROM_MARK_TSN);
 	}
 	if (SCTP_BASE_SYSCTL(sctp_logging_level) & SCTP_MAP_LOGGING_ENABLE) {
 		sctp_log_map(asoc->mapping_array_base_tsn, asoc->cumulative_tsn,
@@ -2332,13 +2310,35 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 			stop_proc = 1;
 			continue;
 		}
+		if ((asoc->idata_supported == 1) &&
+		    (ch->ch.chunk_type == SCTP_DATA)) {
+			struct mbuf *op_err;
+			char msg[SCTP_DIAG_INFO_LEN];
+
+			snprintf(msg, sizeof(msg), "I-DATA chunk received when DATA was negotiated");
+			op_err = sctp_generate_cause(SCTP_CAUSE_PROTOCOL_VIOLATION, msg);
+			stcb->sctp_ep->last_abort_code = SCTP_FROM_SCTP_INDATA + SCTP_LOC_21;
+			sctp_abort_an_association(inp, stcb, op_err, SCTP_SO_NOT_LOCKED);
+			return (2);
+		}
+		if ((asoc->idata_supported == 0) &&
+		    (ch->ch.chunk_type == SCTP_IDATA)) {
+			struct mbuf *op_err;
+			char msg[SCTP_DIAG_INFO_LEN];
+
+			snprintf(msg, sizeof(msg), "DATA chunk received when I-DATA was negotiated");
+			op_err = sctp_generate_cause(SCTP_CAUSE_PROTOCOL_VIOLATION, msg);
+			stcb->sctp_ep->last_abort_code = SCTP_FROM_SCTP_INDATA + SCTP_LOC_21;
+			sctp_abort_an_association(inp, stcb, op_err, SCTP_SO_NOT_LOCKED);
+			return (2);
+		}
 		if ((ch->ch.chunk_type == SCTP_DATA) ||
-		    (ch->ch.chunk_type == SCTP_NDATA)) {
+		    (ch->ch.chunk_type == SCTP_IDATA)) {
 			int clen;
 			if (ch->ch.chunk_type == SCTP_DATA) {
 				clen = sizeof(struct sctp_data_chunk);
 			} else {
-				clen = sizeof(struct sctp_ndata_chunk);
+				clen = sizeof(struct sctp_idata_chunk);
 			}
 			if ((size_t)chk_length < clen) {
 				/*

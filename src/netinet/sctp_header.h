@@ -164,7 +164,7 @@ struct sctp_data_chunk {
 	struct sctp_data dp;
 } SCTP_PACKED;
 
-struct sctp_ndata {
+struct sctp_idata {
 	uint32_t tsn;
 	uint16_t stream_id;
 	uint16_t reserved;	/* Where does the SSN go? */
@@ -176,9 +176,9 @@ struct sctp_ndata {
 	/* user data follows */
 } SCTP_PACKED;
 
-struct sctp_ndata_chunk {
+struct sctp_idata_chunk {
 	struct sctp_chunkhdr ch;
-	struct sctp_ndata dp;
+	struct sctp_idata dp;
 } SCTP_PACKED;
 
 /*

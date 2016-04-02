@@ -495,6 +495,7 @@ struct sctp_inpcb {
 	uint8_t ecn_supported;
 	uint8_t prsctp_supported;
 	uint8_t auth_supported;
+	uint8_t idata_supported;
 	uint8_t asconf_supported;
 	uint8_t reconfig_supported;
 	uint8_t nrsack_supported;

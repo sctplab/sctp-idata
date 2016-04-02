@@ -2306,14 +2306,14 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		SCTP_FIND_STCB(inp, stcb, av->assoc_id);
 
 		if (stcb) {
-			av->assoc_value = stcb->asoc.peer_supports_ndata;
+			av->assoc_value = stcb->asoc.idata_supported;
 			SCTP_TCB_UNLOCK(stcb);
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
 			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
 				SCTP_INP_RLOCK(inp);
-				if (sctp_is_feature_on(inp, SCTP_PCB_FLAGS_USE_NDATA)) {
+				if (inp->idata_supported) {
 					av->assoc_value = 1;
 				} else {
 					av->assoc_value = 0;
@@ -4620,11 +4620,11 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
 				SCTP_INP_WLOCK(inp);
 				if (av->assoc_value == 0) {
-					sctp_feature_off(inp, SCTP_PCB_FLAGS_USE_NDATA);
+					inp->idata_supported = 0;
 				} else {
 					if ((sctp_is_feature_on(inp, SCTP_PCB_FLAGS_FRAG_INTERLEAVE))  &&
 					    (sctp_is_feature_on(inp, SCTP_PCB_FLAGS_INTERLEAVE_STRMS))) {
-						sctp_feature_on(inp, SCTP_PCB_FLAGS_USE_NDATA);
+						inp->idata_supported = 1;
 					} else {
 						/* Must have Frag interleave and stream interleave on */
 						SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, EINVAL);

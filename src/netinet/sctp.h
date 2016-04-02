@@ -469,7 +469,7 @@ struct sctp_error_auth_invalid_hmac {
 /* EY nr_sack chunk id*/
 #define SCTP_NR_SELECTIVE_ACK	0x10
 /************0x40 series ***********/
-#define SCTP_NDATA		0x40
+#define SCTP_IDATA		0x40
 /************0x80 series ***********/
 /* RFC5061 */
 #define	SCTP_ASCONF_ACK		0x80
@@ -594,7 +594,6 @@ struct sctp_error_auth_invalid_hmac {
 #define SCTP_PCB_FLAGS_ASSOC_RESETEVNT   0x0000000020000000
 #define SCTP_PCB_FLAGS_STREAM_CHANGEEVNT 0x0000000040000000
 #define SCTP_PCB_FLAGS_RECVNSENDFAILEVNT 0x0000000080000000
-#define SCTP_PCB_FLAGS_USE_NDATA         0x0000000100000000
 
 /*-
  * mobility_features parameters (by micchie).Note
