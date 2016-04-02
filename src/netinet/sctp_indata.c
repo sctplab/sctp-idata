@@ -359,11 +359,6 @@ sctp_mark_non_revokable(struct sctp_association *asoc, uint32_t tsn)
 		SCTP_SET_TSN_PRESENT(asoc->nr_mapping_array, gap);
 	if (in_r)
 		SCTP_UNSET_TSN_PRESENT(asoc->mapping_array, gap);
-	if ((in_r == 0) && (in_nr)) {
-		printf("%s:TSN %d was in_r:%d but in_nr:%d\n",
-		       __func__,
-		       tsn, in_r, in_nr);
-	}
 	if (SCTP_TSN_GT(tsn, asoc->highest_tsn_inside_nr_map)) {
 		asoc->highest_tsn_inside_nr_map = tsn;
 	}
@@ -585,8 +580,6 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 		asoc->size_on_all_streams -= control->length;
 		sctp_ucount_decr(asoc->cnt_on_all_streams);
 		strm->last_sequence_delivered++;
-		printf("%s:Mark non-revoke control:%p tsn:%d\n",
-		       __func__, control, control->sinfo_tsn);
 		sctp_mark_non_revokable(asoc, control->sinfo_tsn);
 		sctp_add_to_readq(stcb->sctp_ep, stcb,
 		                  control,
@@ -611,8 +604,6 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 					sctp_log_strm_del(control, NULL,
 							  SCTP_STR_LOG_FROM_IMMED_DEL);
 				}
-				printf("%s:Mark non-revoke control:%p tsn:%d\n",
-				       __func__, control, control->sinfo_tsn);
 				sctp_mark_non_revokable(asoc, control->sinfo_tsn);
 				sctp_add_to_readq(stcb->sctp_ep, stcb,
 				                  control,
@@ -845,7 +836,6 @@ repeat:
 				if (sctp_build_one_up_to(stcb, asoc, strm, control, chk) == 0) {
 					goto repeat;
 				} else {
-					printf("Build it failed??\n");
 					return(0);
 				}
 			}
@@ -856,7 +846,6 @@ repeat:
 			sctp_add_to_readq(stcb->sctp_ep, stcb, strm->uno_pd,
 		                  &stcb->sctp_socket->so_rcv, strm->uno_pd->end_added,
 		                  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
-			printf("Start pd-api 3 %p\n", stcb);
 			strm->pd_api_started = 1;
 		}
 	} else {
@@ -875,8 +864,6 @@ repeat:
 				if (strm->uno_pd->end_added) {
 					/* We are done */
 					strm->uno_pd = NULL;
-					printf("pd-api Ends 2 %p\n",
-					       stcb);
 					strm->pd_api_started = 0;
 					sctp_wakeup_the_read_socket(stcb->sctp_ep);
 					goto repeat;
@@ -1004,7 +991,6 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc, s
 		} else {
 			/* Can we do a PD-API for this un-ordered guy? */
 			if ((control->length < pd_point) && (strm->pd_api_started == 0)) {
-				printf("Start pd-api 1 %p\n", stcb);
 				strm->pd_api_started = 1;
 				sctp_add_to_readq(stcb->sctp_ep, stcb,
 						  control,
@@ -1050,8 +1036,6 @@ deliver_more:
 			}
 			if (((control->sinfo_flags >> 8) & SCTP_DATA_NOT_FRAG) == SCTP_DATA_NOT_FRAG) {
 				/* A singleton now slipping through - mark it non-revokable too */
-				printf("%s:Mark non-revoke control:%p tsn:%d\n",
-				       __func__, control, control->sinfo_tsn);
 				sctp_mark_non_revokable(asoc, control->sinfo_tsn);
 			} else if (control->end_added == 0) {
 				/* Check if we can defer adding until its all there */
@@ -1070,7 +1054,6 @@ deliver_more:
 				goto deliver_more;
 			} else {
 				/* We are now doing PD API */
-				printf("Start pd-api 2 %p\n", stcb);
 				strm->pd_api_started = 1;
 			}
 		}
@@ -1277,8 +1260,6 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				cnt_added++;
 				if (control->on_read_q && strm->pd_api_started && control->end_added) {
 					/* Ok end is on, and we were the pd-api guy clear the flag */
-					printf("pd-api Ends 1 %p\n",
-					       stcb);
 					strm->pd_api_started = 0;
 				}
 			} else {
@@ -1618,8 +1599,6 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	    (chunk_flags & SCTP_DATA_UNORDERED) == 0 &&
 	    SCTP_MSGID_GE(old_data, asoc->strmin[strmno].last_sequence_delivered, msg_id)) {
 		/* The incoming sseq is behind where we last delivered? */
-		printf("EVIL/Broken-Dup S-SEQ:%d delivered:%d from peer, Abort! old:%d\n",
-		       msg_id, asoc->strmin[strmno].last_sequence_delivered, old_data);
 		SCTPDBG(SCTP_DEBUG_INDATA1, "EVIL/Broken-Dup S-SEQ:%d delivered:%d from peer, Abort!\n",
 			msg_id, asoc->strmin[strmno].last_sequence_delivered);
 
@@ -1830,8 +1809,6 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		}
 		if (chunk_flags & SCTP_DATA_UNORDERED) {
 			/* queue directly into socket buffer */
-			printf("%s:Mark non-revoke control:%p tsn:%d\n",
-			       __func__, control, control->sinfo_tsn);
 			sctp_mark_non_revokable(asoc, control->sinfo_tsn);
 			sctp_add_to_readq(stcb->sctp_ep, stcb,
 			                  control,
