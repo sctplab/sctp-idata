@@ -389,18 +389,8 @@ sctp_place_control_in_stream(struct sctp_stream_in *strm,
 	bits = (control->sinfo_flags >> 8);
 
 	if (bits & SCTP_DATA_UNORDERED) {
-		struct sctp_queued_to_read *fctl;
 		q = &strm->uno_inqueue;
-		if (control->old_data) {
-			fctl = TAILQ_FIRST(q);
-			if (fctl && fctl->old_data) {
-				panic("Double insert old.. evil you");
-			}
-			TAILQ_INSERT_HEAD(q, control, next_instrm);
-		} else {
-			TAILQ_INSERT_TAIL(q, control, next_instrm);
-		}
-		return (0);
+		TAILQ_INSERT_TAIL(q, control, next_instrm);
 	} else {
 		q = &strm->inqueue;
 	}
@@ -529,7 +519,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 	if (SCTP_BASE_SYSCTL(sctp_logging_level) & SCTP_STR_LOGGING_ENABLE) {
 		sctp_log_strm_del(control, NULL, SCTP_STR_LOG_FROM_INTO_STRD);
 	}
-	if (SCTP_SSN_GE(strm->last_sequence_delivered, control->sinfo_ssn)) {
+	if (SCTP_MSGID_GT((!asoc->idata_supported), strm->last_sequence_delivered, control->sinfo_ssn)) {
 		/* The incoming sseq is behind where we last delivered? */
 		SCTPDBG(SCTP_DEBUG_INDATA1, "Duplicate S-SEQ:%d delivered:%d from peer, Abort association\n",
 			control->sinfo_ssn, strm->last_sequence_delivered);
@@ -967,11 +957,6 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc, s
 			}
 			control = nctl;
 		}
-		if (control && (control->old_data)) {
-			/* Huh - TSNH */
-			printf("another control %p and its old too?\n", control);
-			panic("Found more than one control of old data type?");
-		}
 	}
 	if (strm->pd_api_started) {
 		/* Can't add more */
@@ -1124,6 +1109,14 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	uint32_t next_fsn;
 	struct sctp_tmit_chunk *at, *nat;
 	int cnt_added;
+
+	/*
+	 * For old un-ordered data chunks.
+	 */
+	if (control->old_data && ((control->sinfo_flags >> 8) & SCTP_DATA_UNORDERED)) {
+		sctp_inject_old_data_unordered(stcb, asoc, strm, control, chk, abort_flag);
+		return;
+	}
 	/* Must be added to the stream-in queue */
 	if (created_control) {
 		if (sctp_place_control_in_stream(strm, asoc, control)) {
@@ -1146,13 +1139,6 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				return;
 			}
 		}
-	}
-	/*
-	 * For old un-ordered data chunks.
-	 */
-	if (control->old_data && ((control->sinfo_flags >> 8) & SCTP_DATA_UNORDERED)) {
-		sctp_inject_old_data_unordered(stcb, asoc, strm, control, chk, abort_flag);
-		return;
 	}
 	/*
 	 * Ok we must queue the chunk into the reasembly portion:
@@ -1193,12 +1179,26 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			if (chk->rec.data.rcv_flags & SCTP_DATA_LAST_FRAG) {
 				control->last_frag_seen = 1;
 			}
+			if (SCTP_TSN_GE(control->fsn_included, chk->rec.data.fsn_num)) {
+				/* We have already delivered up to this so its a dup */
+				sctp_abort_in_reasm(stcb, strm, control, chk,
+				                    abort_flag,
+				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_6);
+				return;
+			}
 		} else {
 			if (chk->rec.data.rcv_flags & SCTP_DATA_LAST_FRAG) {
 				/* Second last? huh? */
 				sctp_abort_in_reasm(stcb, strm, control,
 						    chk, abort_flag,
 				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_5);
+				return;
+			}
+			if (SCTP_TSN_GE(control->fsn_included, chk->rec.data.fsn_num)) {
+				/* We have already delivered up to this so its a dup */
+				sctp_abort_in_reasm(stcb, strm, control, chk,
+				                    abort_flag,
+				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_6);
 				return;
 			}
 			/* validate not beyond top FSN if we have seen last one */
@@ -1229,11 +1229,9 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				 * compare to TSN somehow... sigh for now just blow
 				 * away the chunk!
 				 */
-				if (chk->data) {
-					sctp_m_freem(chk->data);
-					chk->data = NULL;
-				}
-				sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
+				sctp_abort_in_reasm(stcb, strm, control,
+						    chk, abort_flag,
+				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_5);
 				return;
 			}
 		}
@@ -1254,10 +1252,10 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		TAILQ_FOREACH_SAFE(at, &control->reasm, sctp_next, nat) {
 			if (at->rec.data.fsn_num == next_fsn) {
 				/* We can add this one now to the control */
-				next_fsn++;
 				TAILQ_REMOVE(&control->reasm, at, sctp_next);
 				sctp_add_chk_to_control(control, stcb, asoc, at);
 				cnt_added++;
+				next_fsn++;
 				if (control->on_read_q && strm->pd_api_started && control->end_added) {
 					/* Ok end is on, and we were the pd-api guy clear the flag */
 					strm->pd_api_started = 0;
@@ -4971,11 +4969,11 @@ sctp_kick_prsctp_reorder_queue(struct sctp_tcb *stcb,
 	 * now ready.
 	 */
 	tt = strmin->last_sequence_delivered + 1;
-	TAILQ_FOREACH_SAFE(ctl, &strmin->inqueue, next, nctl) {
+	TAILQ_FOREACH_SAFE(ctl, &strmin->inqueue, next_instrm, nctl) {
 		if (tt == ctl->sinfo_ssn) {
 			if (((ctl->sinfo_flags >> 8) & SCTP_DATA_NOT_FRAG) == SCTP_DATA_NOT_FRAG) {
 				/* this is deliverable now */
-				TAILQ_REMOVE(&strmin->inqueue, ctl, next);
+				TAILQ_REMOVE(&strmin->inqueue, ctl, next_instrm);
 				/* subtract pending on streams */
 				asoc->size_on_all_streams -= ctl->length;
 				sctp_ucount_decr(asoc->cnt_on_all_streams);
