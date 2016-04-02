@@ -45,9 +45,5 @@
 +0.0 close(3) = 0
 // Inject the first I-DATA chunk.
 +0.1 < sctp: I-DATA[flgs=BE, len=24, tsn=1, sid=0, mid=0, ppid=1234]
-+0.0 > sctp: ERROR[flgs=0, PROTOCOL_VIOLATION[info=...]]
-// Tear down the association.
-+0.1 < sctp: SHUTDOWN[flgs=0, cum_tsn=0]
-+0.0 > sctp: SHUTDOWN_ACK[flgs=0]
-+0.1 < sctp: SHUTDOWN_COMPLETE[flgs=0]
++0.0 > sctp: ABORT[flgs=0, PROTOCOL_VIOLATION[info=...]]
 +0.0 close(4) = 0
