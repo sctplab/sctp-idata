@@ -2832,6 +2832,8 @@ sctp_inpcb_alloc(struct socket *so, uint32_t vrf_id)
 	inp->reconfig_supported = (uint8_t)SCTP_BASE_SYSCTL(sctp_reconfig_enable);
 	inp->nrsack_supported = (uint8_t)SCTP_BASE_SYSCTL(sctp_nrsack_enable);
 	inp->pktdrop_supported = (uint8_t)SCTP_BASE_SYSCTL(sctp_pktdrop_enable);
+	inp->idata_supported = 0;
+
 #if defined(__FreeBSD__)
 	inp->fibnum = so->so_fibnum;
 #else
@@ -7139,6 +7141,7 @@ sctp_load_addresses_from_init(struct sctp_tcb *stcb, struct mbuf *m,
 	uint8_t peer_supports_reconfig;
 	uint8_t peer_supports_nrsack;
 	uint8_t peer_supports_pktdrop;
+	uint8_t peer_supports_idata;
 #ifdef INET
 	struct sockaddr_in sin;
 #endif
@@ -7168,6 +7171,7 @@ sctp_load_addresses_from_init(struct sctp_tcb *stcb, struct mbuf *m,
 	} else {
 		sa = src;
 	}
+	peer_supports_idata = 0;
 	peer_supports_ecn = 0;
 	peer_supports_prsctp = 0;
 	peer_supports_auth = 0;
@@ -7546,10 +7550,8 @@ sctp_load_addresses_from_init(struct sctp_tcb *stcb, struct mbuf *m,
 				case SCTP_AUTHENTICATION:
 					peer_supports_auth = 1;
 					break;
-				case SCTP_NDATA:
-					if (sctp_is_feature_on(inp, SCTP_PCB_FLAGS_USE_NDATA)) {
-						stcb->asoc.peer_supports_ndata = 1;
-					}
+				case SCTP_IDATA:
+					peer_supports_idata = 1;
 					break;
 				default:
 					/* one I have not learned yet */
@@ -7708,6 +7710,10 @@ sctp_load_addresses_from_init(struct sctp_tcb *stcb, struct mbuf *m,
 	if ((stcb->asoc.reconfig_supported == 1) &&
 	    (peer_supports_reconfig == 0)) {
 		stcb->asoc.reconfig_supported = 0;
+	}
+	if ((stcb->asoc.idata_supported == 1) &&
+	    (peer_supports_idata == 0)) {
+		stcb->asoc.idata_supported = 0;
 	}
 	if ((stcb->asoc.nrsack_supported == 1) &&
 	    (peer_supports_nrsack == 0)) {

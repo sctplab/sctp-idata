@@ -603,8 +603,8 @@ struct sctp_stream_in {
 	struct sctp_readhead inqueue;
 	struct sctp_readhead uno_inqueue;
 	struct sctp_queued_to_read *uno_pd;	/* For old style */
+	uint32_t last_sequence_delivered;	/* used for re-order */
 	uint16_t stream_no;
-	uint16_t last_sequence_delivered;	/* used for re-order */
 	uint8_t  delivery_started;
 	uint8_t  pd_api_started;
 };
@@ -708,12 +708,13 @@ struct sctp_scoping {
 struct sctp_tsn_log {
 	void     *stcb;
 	uint32_t tsn;
+	uint32_t seq;
 	uint16_t strm;
-	uint16_t seq;
 	uint16_t sz;
 	uint16_t flgs;
 	uint16_t in_pos;
 	uint16_t in_out;
+	uint16_t resv;
 };
 
 #define SCTP_FS_SPEC_LOG_SIZE 200
@@ -1245,13 +1246,12 @@ struct sctp_association {
 	uint8_t reconfig_supported;
 	uint8_t nrsack_supported;
 	uint8_t pktdrop_supported;
+	uint8_t idata_supported;
 
 	/* Did the peer make the stream config (add out) request */
 	uint8_t peer_req_out;
 
 	uint8_t local_strreset_support;
-
-	uint8_t peer_supports_ndata;
 	uint8_t peer_supports_nat;
 
 	struct sctp_scoping scope;

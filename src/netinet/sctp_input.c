@@ -429,7 +429,7 @@ sctp_process_init(struct sctp_init_chunk *cp, struct sctp_tcb *stcb)
 	}
 	for (i = 0; i < asoc->streamincnt; i++) {
 		asoc->strmin[i].stream_no = i;
-		asoc->strmin[i].last_sequence_delivered = 0xffff;
+		asoc->strmin[i].last_sequence_delivered = 0xffffffff;
 		TAILQ_INIT(&asoc->strmin[i].inqueue);
 		TAILQ_INIT(&asoc->strmin[i].uno_inqueue);
 		asoc->strmin[i].uno_pd = NULL;
@@ -3626,7 +3626,7 @@ sctp_reset_in_stream(struct sctp_tcb *stcb, uint32_t number_entries, uint16_t *l
 	uint16_t temp;
 
 	/*
-	 * We set things to 0xffff since this is the last delivered sequence
+	 * We set things to 0xffffffff since this is the last delivered sequence
 	 * and we will be sending in 0 after the reset.
 	 */
 
@@ -3636,12 +3636,12 @@ sctp_reset_in_stream(struct sctp_tcb *stcb, uint32_t number_entries, uint16_t *l
 			if (temp >= stcb->asoc.streamincnt) {
 				continue;
 			}
-			stcb->asoc.strmin[temp].last_sequence_delivered = 0xffff;
+			stcb->asoc.strmin[temp].last_sequence_delivered = 0xffffffff;
 		}
 	} else {
 		list = NULL;
 		for (i = 0; i < stcb->asoc.streamincnt; i++) {
-			stcb->asoc.strmin[i].last_sequence_delivered = 0xffff;
+			stcb->asoc.strmin[i].last_sequence_delivered = 0xffffffff;
 		}
 	}
 	sctp_ulp_notify(SCTP_NOTIFY_STR_RESET_RECV, stcb, number_entries, (void *)list, SCTP_SO_NOT_LOCKED);
@@ -4199,7 +4199,7 @@ sctp_handle_str_reset_add_strm(struct sctp_tcb *stcb, struct sctp_tmit_chunk *ch
 				TAILQ_INIT(&stcb->asoc.strmin[i].inqueue);
 				TAILQ_INIT(&stcb->asoc.strmin[i].uno_inqueue);
 				stcb->asoc.strmin[i].stream_no = i;
-				stcb->asoc.strmin[i].last_sequence_delivered = 0xffff;
+				stcb->asoc.strmin[i].last_sequence_delivered = 0xffffffff;
 				stcb->asoc.strmin[i].uno_pd = NULL;
 				stcb->asoc.strmin[i].pd_api_started = 0;
 				stcb->asoc.strmin[i].delivery_started = 0;
