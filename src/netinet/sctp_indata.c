@@ -1571,13 +1571,14 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	}
 	strm = &asoc->strmin[strmno];
 	/*
-	 * If we are using NDATA, and not we are a fragmented
-	 * message, see if we have control chunk for reassembly
-	 * on the stream queue.
+	 * If its a fragmented message, lets see if we can
+	 * find the control on the reassembly queues.
 	 */
 	if ((chunk_flags & SCTP_DATA_NOT_FRAG) != SCTP_DATA_NOT_FRAG) {
 		/* See if we can find the re-assembly entity */
 		control = find_reasm_entry(strm, msg_id, ordered, old_data);
+		SCTPDBG(SCTP_DEBUG_XXX, "chunk_flags:0x%x look for control on queues %p\n",
+			chunk_flags, control);
 		if (control) {
 			/* We found something, does it belong? */
 			if (ordered && (msg_id != control->sinfo_ssn)) {
@@ -1603,7 +1604,13 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		 * the same Stream/Seq (for ordered) or in
 		 * the same Stream for unordered.
 		 */
+		SCTPDBG(SCTP_DEBUG_XXX, "chunk_flags:0x%x look for msg in case we have dup\n",
+			chunk_flags);
 		if (find_reasm_entry(strm, msg_id, ordered, old_data)) {
+			SCTPDBG(SCTP_DEBUG_XXX, "chunk_flags:0x%x dup detected on msg_id:%d\n",
+				chunk_flags,
+				msg_id);
+
 			goto err_out;
 		}
 	}
@@ -1782,6 +1789,8 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		}
 		created_control = 1;
 	}
+	SCTPDBG(SCTP_DEBUG_XXX, "chunk_flags:0x%x ordered:%d msgid:%d control:%p\n",
+		chunk_flags, ordered, msg_id, control);
 	if ((chunk_flags & SCTP_DATA_NOT_FRAG) == SCTP_DATA_NOT_FRAG &&
 	    TAILQ_EMPTY(&asoc->resetHead) &&
 	    ((ordered == 0) ||
@@ -1799,6 +1808,9 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		if (SCTP_TSN_GT(tsn, asoc->highest_tsn_inside_nr_map)) {
 			asoc->highest_tsn_inside_nr_map = tsn;
 		}
+		SCTPDBG(SCTP_DEBUG_XXX, "Injecting control:%p to be read (mid:%d)\n",
+			control, msg_id);
+
 		sctp_add_to_readq(stcb->sctp_ep, stcb,
 		                  control, &stcb->sctp_socket->so_rcv,
 		                  1, SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
@@ -1840,6 +1852,9 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		chk->asoc = asoc;
 		chk->send_size = the_len;
 		chk->whoTo = net;
+		SCTPDBG(SCTP_DEBUG_XXX, "Building ck:%p for control:%p to be read (mid:%d)\n",
+			chk,
+			control, msg_id);
 		atomic_add_int(&net->ref_count, 1);
 		chk->data = dmbuf;
 	}
@@ -1901,6 +1916,8 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		}
 		if (chunk_flags & SCTP_DATA_UNORDERED) {
 			/* queue directly into socket buffer */
+			SCTPDBG(SCTP_DEBUG_XXX, "Unordered data to be read control:%p msg_id:%d\n",
+				control, msg_id);
 			sctp_mark_non_revokable(asoc, control->sinfo_tsn);
 			sctp_add_to_readq(stcb->sctp_ep, stcb,
 			                  control,
@@ -1908,6 +1925,8 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			                  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
 
 		} else {
+			SCTPDBG(SCTP_DEBUG_XXX, "Queue control:%p for reordering msg_id:%d\n", control,
+				msg_id);
 			sctp_queue_data_to_stream(stcb, strm, asoc, control, abort_flag, &need_reasm_check);
 			if (*abort_flag) {
 				if (last_chunk) {
@@ -1920,6 +1939,9 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	}
 	/* If we reach here its a reassembly */
 	need_reasm_check = 1;
+	SCTPDBG(SCTP_DEBUG_XXX,
+		"Queue data to stream for reasm control:%p msg_id:%d\n",
+		control, msg_id);
 	sctp_queue_data_for_reasm(stcb, asoc, strm, control, chk, created_control, abort_flag, tsn);
 	if (*abort_flag) {
 		/*
