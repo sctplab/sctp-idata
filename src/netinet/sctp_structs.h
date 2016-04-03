@@ -548,8 +548,11 @@ struct sctp_queued_to_read {	/* sinfo structure Pluse more */
 	uint8_t  last_frag_seen;
 	uint8_t  first_frag_seen;
 	uint8_t  on_read_q;
-	uint8_t  old_data;
+	uint8_t  on_strm_q;
 };
+
+#define SCTP_ON_ORDERED 1
+#define SCTP_ON_UNORDERED 2
 
 /* This data structure will be on the outbound
  * stream queues. Data will be pulled off from
