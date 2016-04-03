@@ -1339,7 +1339,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					if (strm->pd_api_started) {
 						strm->pd_api_started = 0;
 					}
-					if ((control->on_read_q == 0) && unordered) {
+					if (control->on_read_q == 0) {
 						sctp_add_to_readq(stcb->sctp_ep, stcb,
 								  control,
 								  &stcb->sctp_socket->so_rcv, control->end_added,

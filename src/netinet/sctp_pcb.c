@@ -5427,6 +5427,7 @@ sctp_clean_up_stream(struct sctp_tcb *stcb, struct sctp_readhead *rh)
 	struct sctp_queued_to_read *ctl, *nctl;
 	TAILQ_FOREACH_SAFE(ctl, rh, next_instrm, nctl) {
 		TAILQ_REMOVE(rh, ctl, next_instrm);
+		ctl->on_strm_q = 0;
 		if (ctl->on_read_q == 0) {
 			sctp_free_remote_addr(ctl->whoFrom);
 			if (ctl->data) {
