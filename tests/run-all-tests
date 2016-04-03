@@ -26,7 +26,7 @@
 # SUCH DAMAGE.
 #
 
-set packetdrill = /home/tuexen/packetdrill/gtests/net/packetdrill/packetdrill
+set packetdrill = packetdrill
 set delay = 1
 set testcases = (sctp-idata-01 \
                  sctp-idata-02 \
