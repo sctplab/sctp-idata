@@ -48,7 +48,7 @@
 +0.1 < sctp: I-DATA[flgs=UB, len=24, tsn=1, sid=0, mid=0, ppid=0]
 +0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=..., gaps=[], dups=[]]
 +0.0 < sctp: I-DATA[flgs=U, len=24, tsn=2, sid=0, mid=0, fsn=1]
-+0.0 < sctp: I-DATA[flgs=U, len=24, tsn=3, sid=0, mid=0, fsn=2]
++0.0 < sctp: I-DATA[flgs=UE, len=24, tsn=3, sid=0, mid=0, fsn=2]
 +0.0 > sctp: SACK[flgs=0, cum_tsn=3, a_rwnd=..., gaps=[], dups=[]]
 +0.0 recv(4, ..., 100, 0) = 12
 // Tear down the association.
