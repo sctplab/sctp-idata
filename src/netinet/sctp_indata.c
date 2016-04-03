@@ -533,7 +533,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 	 */
 	struct sctp_queued_to_read *at;
 	int queue_needed;
-	uint16_t nxt_todel;
+	uint32_t nxt_todel;
 	struct mbuf *op_err;
 	char msg[SCTP_DIAG_INFO_LEN];
 
@@ -864,6 +864,7 @@ repeat:
 		                  &stcb->sctp_socket->so_rcv, strm->uno_pd->end_added,
 		                  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
 			strm->pd_api_started = 1;
+			strm->uno_pd->pdapi_started = 1;
 		}
 	} else {
 		/* I have a PD-API going on in uno_pd, have I got more in the reasm for this one? */
@@ -880,8 +881,10 @@ repeat:
 				cnt_added++;
 				if (strm->uno_pd->end_added) {
 					/* We are done */
-					strm->uno_pd = NULL;
-					strm->pd_api_started = 0;
+					if (control->pdapi_started) {
+						strm->uno_pd = NULL;
+						strm->pd_api_started = 0;
+					}
 					sctp_wakeup_the_read_socket(stcb->sctp_ep);
 					goto repeat;
 				}
@@ -964,7 +967,7 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc, s
 	 * we need to remove them from the stream's queue.
 	 */
 	struct sctp_queued_to_read *control, *nctl=NULL;
-	uint16_t next_to_del;
+	uint32_t next_to_del;
 	uint32_t pd_point;
 	int ret = 0;
 
@@ -1010,6 +1013,7 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc, s
 			/* Can we do a PD-API for this un-ordered guy? */
 			if ((control->length >= pd_point) && (strm->pd_api_started == 0)) {
 				strm->pd_api_started = 1;
+				control->pdapi_started = 1;
 				sctp_add_to_readq(stcb->sctp_ep, stcb,
 						  control,
 						  &stcb->sctp_socket->so_rcv, control->end_added,
@@ -1052,8 +1056,10 @@ deliver_more:
 						  &stcb->sctp_socket->so_rcv, control->end_added,
 						  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
 			}
-			if (strm->pd_api_started)
+			if (strm->pd_api_started && control->pdapi_started) {
+				control->pdapi_started = 0;
 				strm->pd_api_started = 0;
+			}
 			control = nctl;
 		}
 	}
@@ -1099,6 +1105,7 @@ deliver_more:
 			} else {
 				/* We are now doing PD API */
 				strm->pd_api_started = 1;
+				control->pdapi_started = 1;
 			}
 		}
 	}
@@ -1143,7 +1150,11 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 	}
 	if (chk->rec.data.rcv_flags & SCTP_DATA_LAST_FRAG) {
 		/* Its complete */
-		if (control->on_strm_q) {
+		if ((control->on_strm_q) && (control->on_read_q)) {
+			if (control->pdapi_started) {
+				control->pdapi_started = 0;
+				strm->pd_api_started = 0;
+			}
 			if (control->on_strm_q == SCTP_ON_UNORDERED) {
 				/* Unordered */
 				TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
@@ -1335,9 +1346,10 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				sctp_add_chk_to_control(control, strm, stcb, asoc, at);
 				cnt_added++;
 				next_fsn++;
-				if (control->end_added) {
+				if (control->end_added && control->pdapi_started) {
 					if (strm->pd_api_started) {
 						strm->pd_api_started = 0;
+						control->pdapi_started = 0;
 					}
 					if (control->on_read_q == 0) {
 						sctp_add_to_readq(stcb->sctp_ep, stcb,
@@ -5110,7 +5122,7 @@ sctp_kick_prsctp_reorder_queue(struct sctp_tcb *stcb,
 static void
 sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 	struct sctp_association *asoc,
-	uint16_t stream, uint16_t seq)
+	uint16_t stream, uint32_t seq)
 {
 	struct sctp_queued_to_read *control;
 	struct sctp_stream_in *strm;

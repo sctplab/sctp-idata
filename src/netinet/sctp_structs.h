@@ -544,6 +544,7 @@ struct sctp_queued_to_read {	/* sinfo structure Pluse more */
 	uint8_t  do_not_ref_stcb;
 	uint8_t  end_added;
 	uint8_t  pdapi_aborted;
+	uint8_t  pdapi_started;
 	uint8_t  some_taken;
 	uint8_t  last_frag_seen;
 	uint8_t  first_frag_seen;
