@@ -4274,8 +4274,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate, int from)
 		 * no need to free the net count, since at this point all
 		 * assoc's are gone.
 		 */
-		SCTP_ZONE_FREE(SCTP_BASE_INFO(ipi_zone_readq), sq);
-		SCTP_DECR_READQ_COUNT();
+		sctp_free_a_readq(NULL, sq);
 	}
 	/* Now the sctp_pcb things */
 	/*
@@ -5455,9 +5454,8 @@ sctp_clean_up_stream(struct sctp_tcb *stcb, struct sctp_readhead *rh)
 		 * above.
 		 */
 		if (ctl->on_read_q == 0) {
-			SCTP_ZONE_FREE(SCTP_BASE_INFO(ipi_zone_readq), ctl);
+			sctp_free_a_readq(stcb, ctl);
 		}
-		SCTP_DECR_READQ_COUNT();
 	}
 }
 
@@ -5808,8 +5806,7 @@ sctp_free_assoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb, int from_inpcbfre
 		sq->whoFrom = NULL;
 		sq->stcb = NULL;
 		/* Free the ctl entry */
-		SCTP_ZONE_FREE(SCTP_BASE_INFO(ipi_zone_readq), sq);
-		SCTP_DECR_READQ_COUNT();
+		sctp_free_a_readq(stcb, sq);
 		/*sa_ignore FREED_MEMORY*/
 	}
 	TAILQ_FOREACH_SAFE(chk, &asoc->free_chunks, sctp_next, nchk) {
@@ -7936,8 +7933,7 @@ sctp_drain_mbufs(struct sctp_tcb *stcb)
 					}
 					sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
 				}
-				SCTP_ZONE_FREE(SCTP_BASE_INFO(ipi_zone_readq), ctl);
-				SCTP_DECR_READQ_COUNT();
+				sctp_free_a_readq(stcb, ctl);
 			}
 		}
 		TAILQ_FOREACH_SAFE(ctl, &asoc->strmin[strmat].uno_inqueue, next_instrm, nctl) {
@@ -7968,8 +7964,7 @@ sctp_drain_mbufs(struct sctp_tcb *stcb)
 					}
 					sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
 				}
-				SCTP_ZONE_FREE(SCTP_BASE_INFO(ipi_zone_readq), ctl);
-				SCTP_DECR_READQ_COUNT();
+				sctp_free_a_readq(stcb, ctl);
 			}
 		}
 	}

@@ -4819,7 +4819,7 @@ sctp_add_to_readq(struct sctp_inpcb *inp,
 			sctp_m_freem(control->data);
 			control->data = NULL;
 		}
-		SCTP_ZONE_FREE(SCTP_BASE_INFO(ipi_zone_readq), control);
+		sctp_free_a_readq(stcb, control);
 		if (inp_read_lock_held == 0)
 			SCTP_INP_READ_UNLOCK(inp);
 		return;
@@ -4865,7 +4865,7 @@ sctp_add_to_readq(struct sctp_inpcb *inp,
 	} else {
 		/* Everything got collapsed out?? */
 		sctp_free_remote_addr(control->whoFrom);
-		SCTP_ZONE_FREE(SCTP_BASE_INFO(ipi_zone_readq), control);
+		sctp_free_a_readq(stcb, control);
 		if (inp_read_lock_held == 0)
 			SCTP_INP_READ_UNLOCK(inp);
 		return;
@@ -6115,6 +6115,10 @@ sctp_sorecvmsg(struct socket *so,
 			sctp_m_free (control->aux_data);
 			control->aux_data = NULL;
 		}
+		if (control->on_strm_q) {
+			panic("About to free ctl:%p so:%p and its in %d",
+			      control, so, control->on_strm_q);
+		}
 		sctp_free_remote_addr(control->whoFrom);
 		sctp_free_a_readq(stcb, control);
 		if (hold_rlock) {
@@ -6405,15 +6409,8 @@ sctp_sorecvmsg(struct socket *so,
 				/* error we are out of here */
 				goto release;
 			}
-			if ((SCTP_BUF_NEXT(m) == NULL) &&
-			    (cp_len >= SCTP_BUF_LEN(m)) &&
-			    ((control->end_added == 0) ||
-			     (control->end_added &&
-			      (TAILQ_NEXT(control, next) == NULL)))
-				) {
-				SCTP_INP_READ_LOCK(inp);
-				hold_rlock = 1;
-			}
+			SCTP_INP_READ_LOCK(inp);
+			hold_rlock = 1;
 			if (cp_len == SCTP_BUF_LEN(m)) {
 				if ((SCTP_BUF_NEXT(m)== NULL) &&
 				    (control->end_added)) {
@@ -6534,17 +6531,9 @@ sctp_sorecvmsg(struct socket *so,
 #endif
 				}
 			done_with_control:
-				if (TAILQ_NEXT(control, next) == NULL) {
-					/* If we don't have a next we need a
-					 * lock, if there is a next interrupt
-					 * is filling ahead of us and we don't
-					 * need a lock to remove this guy
-					 * (which is the head of the queue).
-					 */
-					if (hold_rlock == 0) {
-						SCTP_INP_READ_LOCK(inp);
-						hold_rlock = 1;
-					}
+				if (hold_rlock == 0) {
+					SCTP_INP_READ_LOCK(inp);
+					hold_rlock = 1;
 				}
 				TAILQ_REMOVE(&inp->read_queue, control, next);
 				/* Add back any hiddend data */
@@ -6560,6 +6549,10 @@ sctp_sorecvmsg(struct socket *so,
 				no_rcv_needed = control->do_not_ref_stcb;
 				sctp_free_remote_addr(control->whoFrom);
 				control->data = NULL;
+				if (control->on_strm_q) {
+					panic("About to free ctl:%p so:%p and its in %d",
+					      control, so, control->on_strm_q);
+				}
 				sctp_free_a_readq(stcb, control);
 				control = NULL;
 				if ((freed_so_far >= rwnd_req) &&

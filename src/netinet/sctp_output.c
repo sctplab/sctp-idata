@@ -8085,7 +8085,7 @@ re_look:
 		ndchkh->dp.stream_id = htons(strq->stream_no);
 		/* WHAT DO WE DO HERE??? */
 		ndchkh->dp.reserved = htons(0);
-		ndchkh->dp.msg_id = htonl(chk->rec.data.stream_seq);
+		ndchkh->dp.msg_id = htonl(sp->msg_id);
 		if (sp->fsn == 0)
 			ndchkh->dp.protocol_id = chk->rec.data.payloadtype;
 		else
