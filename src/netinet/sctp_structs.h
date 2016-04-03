@@ -515,7 +515,7 @@ struct sctp_tmit_chunk {
  */
 struct sctp_queued_to_read {	/* sinfo structure Pluse more */
 	uint16_t sinfo_stream;	/* off the wire */
-	uint16_t sinfo_ssn;	/* off the wire */
+	uint32_t sinfo_ssn;	/* off the wire */
 	uint16_t sinfo_flags;	/* SCTP_UNORDERED from wire use SCTP_EOF for
 				 * EOR */
 	uint32_t sinfo_ppid;	/* off the wire */

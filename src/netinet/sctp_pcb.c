@@ -7916,7 +7916,7 @@ sctp_drain_mbufs(struct sctp_tcb *stcb)
 				asoc->size_on_all_streams = sctp_sbspace_sub(asoc->size_on_all_streams, ctl->length);
 				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				SCTP_UNSET_TSN_PRESENT(asoc->mapping_array, gap);
-				TAILQ_REMOVE(&asoc->strmin[strmat].inqueue, ctl, next);
+				TAILQ_REMOVE(&asoc->strmin[strmat].inqueue, ctl, next_instrm);
 				if (ctl->data) {
 					sctp_m_freem(ctl->data);
 					ctl->data = NULL;
@@ -7948,7 +7948,7 @@ sctp_drain_mbufs(struct sctp_tcb *stcb)
 				asoc->size_on_all_streams = sctp_sbspace_sub(asoc->size_on_all_streams, ctl->length);
 				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				SCTP_UNSET_TSN_PRESENT(asoc->mapping_array, gap);
-				TAILQ_REMOVE(&asoc->strmin[strmat].uno_inqueue, ctl, next);
+				TAILQ_REMOVE(&asoc->strmin[strmat].uno_inqueue, ctl, next_instrm);
 				if (ctl->data) {
 					sctp_m_freem(ctl->data);
 					ctl->data = NULL;
