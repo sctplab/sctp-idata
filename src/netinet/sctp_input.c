@@ -1168,6 +1168,7 @@ sctp_process_unrecog_chunk(struct sctp_tcb *stcb, struct sctp_paramhdr *phdr,
 	case SCTP_ASCONF:
 		sctp_asconf_cleanup(stcb, net);
 		break;
+	case SCTP_IFORWARD_CUM_TSN:
 	case SCTP_FORWARD_CUM_TSN:
 		stcb->asoc.prsctp_supported = 0;
 		break;
@@ -3629,6 +3630,7 @@ process_chunk_drop(struct sctp_tcb *stcb, struct sctp_chunk_desc *desc,
 		/* resend last asconf ack */
 		sctp_send_asconf_ack(stcb);
 		break;
+	case SCTP_IFORWARD_CUM_TSN:
 	case SCTP_FORWARD_CUM_TSN:
 		send_forward_tsn(stcb, &stcb->asoc);
 		break;
@@ -5638,6 +5640,7 @@ sctp_process_control(struct mbuf *m, int iphlen, int *offset, int length,
 			}
 			break;
 		case SCTP_FORWARD_CUM_TSN:
+		case SCTP_IFORWARD_CUM_TSN:
 			SCTPDBG(SCTP_DEBUG_INPUT3, "SCTP_FWD-TSN\n");
 			if (chk_length < sizeof(struct sctp_forward_tsn_chunk)) {
 				/* Its not ours */

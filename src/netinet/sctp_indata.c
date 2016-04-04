@@ -5091,16 +5091,22 @@ sctp_kick_prsctp_reorder_queue(struct sctp_tcb *stcb,
 {
 	struct sctp_queued_to_read *ctl, *nctl;
 	struct sctp_association *asoc;
-	uint16_t tt;
-	int need_reasm_check = 0;
+	uint32_t tt;
+	int need_reasm_check = 0, old;
+
 	asoc = &stcb->asoc;
 	tt = strmin->last_sequence_delivered;
+	if (asoc->idata_supported) {
+		old = 0;
+	} else {
+		old = 1;
+	}
 	/*
 	 * First deliver anything prior to and including the stream no that
 	 * came in.
 	 */
 	TAILQ_FOREACH_SAFE(ctl, &strmin->inqueue, next_instrm, nctl) {
-		if (SCTP_SSN_GE(tt, ctl->sinfo_ssn)) {
+		if (SCTP_MSGID_GE(old, tt, ctl->sinfo_ssn)) {
 			/* this is deliverable now */
 			if (((ctl->sinfo_flags >> 8) & SCTP_DATA_NOT_FRAG)  == SCTP_DATA_NOT_FRAG) {
 				if (ctl->on_strm_q) {
@@ -5122,7 +5128,9 @@ sctp_kick_prsctp_reorder_queue(struct sctp_tcb *stcb,
 					sctp_mark_non_revokable(asoc, ctl->sinfo_tsn);
 					sctp_add_to_readq(stcb->sctp_ep, stcb,
 							  ctl,
-							  &stcb->sctp_socket->so_rcv, 1, SCTP_READ_LOCK_HELD, SCTP_SO_NOT_LOCKED);
+							  &stcb->sctp_socket->so_rcv,
+							  1, SCTP_READ_LOCK_HELD,
+							  SCTP_SO_NOT_LOCKED);
 				}
 			} else {
 				/* Its a fragmented message */
@@ -5141,7 +5149,7 @@ sctp_kick_prsctp_reorder_queue(struct sctp_tcb *stcb,
 	if (need_reasm_check) {
 		int ret;
 		ret = sctp_deliver_reasm_check(stcb, &stcb->asoc, strmin);
-		if (SCTP_SSN_GT(tt, strmin->last_sequence_delivered)) {
+		if (SCTP_MSGID_GT(old, tt, strmin->last_sequence_delivered)) {
 			/* Restore the next to deliver unless we are ahead */
 			strmin->last_sequence_delivered = tt;
 		}
@@ -5180,7 +5188,8 @@ sctp_kick_prsctp_reorder_queue(struct sctp_tcb *stcb,
 					sctp_mark_non_revokable(asoc, ctl->sinfo_tsn);
 					sctp_add_to_readq(stcb->sctp_ep, stcb,
 							  ctl,
-							  &stcb->sctp_socket->so_rcv, 1, SCTP_READ_LOCK_HELD, SCTP_SO_NOT_LOCKED);
+							  &stcb->sctp_socket->so_rcv, 1,
+							  SCTP_READ_LOCK_HELD, SCTP_SO_NOT_LOCKED);
 
 				}
 				tt = strmin->last_sequence_delivered + 1;
@@ -5349,25 +5358,44 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 	if (m && fwd_sz) {
 		/* New method. */
 		unsigned int num_str;
+		uint32_t sequence;
+		uint16_t stream;
+		int old;
 		struct sctp_strseq *stseq, strseqbuf;
+		struct sctp_strseq_mid *stseq_m, strseqbuf_m;
 		offset += sizeof(*fwd);
 
 		SCTP_INP_READ_LOCK(stcb->sctp_ep);
-		num_str = fwd_sz / sizeof(struct sctp_strseq);
+		if (asoc->idata_supported) {
+			num_str = fwd_sz / sizeof(struct sctp_strseq_mid);
+			old = 0;
+		} else {
+			num_str = fwd_sz / sizeof(struct sctp_strseq);
+			old = 1;
+		}
 		for (i = 0; i < num_str; i++) {
-			uint16_t st;
-			stseq = (struct sctp_strseq *)sctp_m_getptr(m, offset,
-								    sizeof(struct sctp_strseq),
-								    (uint8_t *)&strseqbuf);
-			offset += sizeof(struct sctp_strseq);
-			if (stseq == NULL) {
-				break;
+			if (asoc->idata_supported) {
+				stseq_m = (struct sctp_strseq_mid *)sctp_m_getptr(m, offset,
+									    sizeof(struct sctp_strseq_mid),
+									    (uint8_t *)&strseqbuf_m);
+				offset += sizeof(struct sctp_strseq_mid);
+				if (stseq_m == NULL) {
+					break;
+				}
+				stream = ntohs(stseq_m->stream);
+				sequence = ntohl(stseq_m->msg_id);
+			} else {
+				stseq = (struct sctp_strseq *)sctp_m_getptr(m, offset,
+									    sizeof(struct sctp_strseq),
+									    (uint8_t *)&strseqbuf);
+				offset += sizeof(struct sctp_strseq);
+				if (stseq == NULL) {
+					break;
+				}
+				stream = ntohs(stseq->stream);
+				sequence = (uint32_t)ntohs(stseq->sequence);
 			}
 			/* Convert */
-			st = ntohs(stseq->stream);
-			stseq->stream = st;
-			st = ntohs(stseq->sequence);
-			stseq->sequence = st;
 
 			/* now process */
 
@@ -5376,24 +5404,24 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 			 * where its not all delivered. If we find it we transmute the
 			 * read entry into a PDI_ABORTED.
 			 */
-			if (stseq->stream >= asoc->streamincnt) {
+			if (stream >= asoc->streamincnt) {
 				/* screwed up streams, stop!  */
 				break;
 			}
-			if ((asoc->str_of_pdapi == stseq->stream) &&
-			    (asoc->ssn_of_pdapi == stseq->sequence)) {
+			if ((asoc->str_of_pdapi == stream) &&
+			    (asoc->ssn_of_pdapi == sequence)) {
 				/* If this is the one we were partially delivering
 				 * now then we no longer are. Note this will change
 				 * with the reassembly re-write.
 				 */
 				asoc->fragmented_delivery_inprogress = 0;
 			}
-			strm = &asoc->strmin[stseq->stream];
-			sctp_flush_reassm_for_str_seq(stcb, asoc, stseq->stream, stseq->sequence);
+			strm = &asoc->strmin[stream];
+			sctp_flush_reassm_for_str_seq(stcb, asoc, stream, sequence);
 			TAILQ_FOREACH(ctl, &stcb->sctp_ep->read_queue, next) {
-				if ((ctl->sinfo_stream == stseq->stream) &&
-				    (ctl->sinfo_ssn == stseq->sequence)) {
-					str_seq = (stseq->stream << 16) | stseq->sequence;
+				if ((ctl->sinfo_stream == stream) &&
+				    (ctl->sinfo_ssn == sequence)) {
+					str_seq = (stream << 16) | (0x0000ffff &sequence);
 					ctl->pdapi_aborted = 1;
 					sv = stcb->asoc.control_pdapi;
 					ctl->end_added = 1;
@@ -5414,15 +5442,15 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 							SCTP_SO_NOT_LOCKED);
 					stcb->asoc.control_pdapi = sv;
 					break;
-				} else if ((ctl->sinfo_stream == stseq->stream) &&
-					   SCTP_SSN_GT(ctl->sinfo_ssn, stseq->sequence)) {
+				} else if ((ctl->sinfo_stream == stream) &&
+					   SCTP_MSGID_GT(old, ctl->sinfo_ssn, sequence)) {
 					/* We are past our victim SSN */
 					break;
 				}
 			}
-			if (SCTP_SSN_GT(stseq->sequence, strm->last_sequence_delivered)) {
+			if (SCTP_MSGID_GT(old, sequence, strm->last_sequence_delivered)) {
 				/* Update the sequence number */
-				strm->last_sequence_delivered = stseq->sequence;
+				strm->last_sequence_delivered = sequence;
 			}
 			/* now kick the stream the new way */
 			/*sa_ignore NO_NULL_CHK*/

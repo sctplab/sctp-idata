@@ -413,6 +413,12 @@ struct sctp_strseq {
 	uint16_t sequence;
 } SCTP_PACKED;
 
+struct sctp_strseq_mid {
+	uint16_t stream;
+	uint16_t reserved;
+	uint32_t msg_id;
+};
+
 struct sctp_forward_tsn_msg {
 	struct sctphdr sh;
 	struct sctp_forward_tsn_chunk msg;

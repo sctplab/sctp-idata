@@ -485,7 +485,7 @@ struct sctp_error_auth_invalid_hmac {
 #define SCTP_FORWARD_CUM_TSN	0xc0
 /* RFC5061 */
 #define SCTP_ASCONF		0xc1
-
+#define SCTP_IFORWARD_CUM_TSN	0xc2
 
 /* ABORT and SHUTDOWN COMPLETE FLAG */
 #define SCTP_HAD_NO_TCB		0x01

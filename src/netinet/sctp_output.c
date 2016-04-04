@@ -10791,7 +10791,13 @@ send_forward_tsn(struct sctp_tcb *stcb,
         struct sctp_tmit_chunk *chk;
 	struct sctp_forward_tsn_chunk *fwdtsn;
 	uint32_t advance_peer_ack_point;
+	int old;
 
+	if (asoc->idata_supported) {
+		old = 0;
+	} else {
+		old = 1;
+	}
         SCTP_TCB_LOCK_ASSERT(stcb);
 	TAILQ_FOREACH(chk, &asoc->control_send_queue, sctp_next) {
 		if (chk->rec.chunk_id.id == SCTP_FORWARD_CUM_TSN) {
@@ -10813,6 +10819,13 @@ send_forward_tsn(struct sctp_tcb *stcb,
 	}
 	asoc->fwd_tsn_cnt++;
 	chk->copy_by_ref = 0;
+	/* 
+	 * We don't do the old thing here since
+	 * this is used not for on-wire but to
+	 * tell if we are sending a fwd-tsn by
+	 * the stack during output. And if its
+	 * a IFORWARD or a FORWARD it is a fwd-tsn.
+	 */
 	chk->rec.chunk_id.id = SCTP_FORWARD_CUM_TSN;
 	chk->rec.chunk_id.can_take_data = 0;
 	chk->flags = 0;
@@ -10837,6 +10850,7 @@ sctp_fill_in_rest:
 	{
 		struct sctp_tmit_chunk *at, *tp1, *last;
 		struct sctp_strseq *strseq;
+		struct sctp_strseq_mid *strseq_m;
 		unsigned int cnt_of_space, i, ovh;
 		unsigned int space_needed;
 		unsigned int cnt_of_skipped = 0;
@@ -10853,9 +10867,13 @@ sctp_fill_in_rest:
 			}
 			cnt_of_skipped++;
 		}
-		space_needed = (sizeof(struct sctp_forward_tsn_chunk) +
-		    (cnt_of_skipped * sizeof(struct sctp_strseq)));
-
+		if (old) {
+			space_needed = (sizeof(struct sctp_forward_tsn_chunk) +
+					(cnt_of_skipped * sizeof(struct sctp_strseq)));
+		} else {
+			space_needed = (sizeof(struct sctp_forward_tsn_chunk) +
+					(cnt_of_skipped * sizeof(struct sctp_strseq_mid)));
+		}
 		cnt_of_space = (unsigned int)M_TRAILINGSPACE(chk->data);
 
 		if (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) {
@@ -10884,8 +10902,13 @@ sctp_fill_in_rest:
 					       0xff, 0xff, cnt_of_space,
 					       space_needed);
 			}
-			cnt_of_skipped = cnt_of_space - sizeof(struct sctp_forward_tsn_chunk);
-			cnt_of_skipped /= sizeof(struct sctp_strseq);
+			if (old) {
+				cnt_of_skipped = cnt_of_space - sizeof(struct sctp_forward_tsn_chunk);
+				cnt_of_skipped /= sizeof(struct sctp_strseq);
+			} else {
+				cnt_of_skipped = cnt_of_space - sizeof(struct sctp_forward_tsn_chunk);
+				cnt_of_skipped /= sizeof(struct sctp_strseq_mid);
+			}
 			/*-
 			 * Go through and find the TSN that will be the one
 			 * we report.
@@ -10912,15 +10935,24 @@ sctp_fill_in_rest:
 			 */
 			if (last)
 				advance_peer_ack_point = last->rec.data.TSN_seq;
-			space_needed = sizeof(struct sctp_forward_tsn_chunk) +
-			               cnt_of_skipped * sizeof(struct sctp_strseq);
+			if (old) {
+				space_needed = sizeof(struct sctp_forward_tsn_chunk) +
+					cnt_of_skipped * sizeof(struct sctp_strseq);
+			} else {
+				space_needed = sizeof(struct sctp_forward_tsn_chunk) +
+					cnt_of_skipped * sizeof(struct sctp_strseq_mid);
+			}
 		}
 		chk->send_size = space_needed;
 		/* Setup the chunk */
 		fwdtsn = mtod(chk->data, struct sctp_forward_tsn_chunk *);
 		fwdtsn->ch.chunk_length = htons(chk->send_size);
 		fwdtsn->ch.chunk_flags = 0;
-		fwdtsn->ch.chunk_type = SCTP_FORWARD_CUM_TSN;
+		if (old) {
+			fwdtsn->ch.chunk_type = SCTP_FORWARD_CUM_TSN;
+		} else {
+			fwdtsn->ch.chunk_type = SCTP_IFORWARD_CUM_TSN;
+		}
 		fwdtsn->new_cumulative_tsn = htonl(advance_peer_ack_point);
 		SCTP_BUF_LEN(chk->data) = chk->send_size;
 		fwdtsn++;
@@ -10928,7 +10960,11 @@ sctp_fill_in_rest:
 		 * Move pointer to after the fwdtsn and transfer to the
 		 * strseq pointer.
 		 */
-		strseq = (struct sctp_strseq *)fwdtsn;
+		if (old) {
+			strseq = (struct sctp_strseq *)fwdtsn;
+		} else {
+			strseq_m = (struct sctp_strseq_mid *)fwdtsn;
+		}
 		/*-
 		 * Now populate the strseq list. This is done blindly
 		 * without pulling out duplicate stream info. This is
@@ -10955,9 +10991,15 @@ sctp_fill_in_rest:
 			if (at->rec.data.TSN_seq == advance_peer_ack_point) {
 				at->rec.data.fwd_tsn_cnt = 0;
 			}
-			strseq->stream = ntohs(at->rec.data.stream_number);
-			strseq->sequence = ntohs(at->rec.data.stream_seq);
-			strseq++;
+			if (old) {
+				strseq->stream = ntohs(at->rec.data.stream_number);
+				strseq->sequence = ntohs(at->rec.data.stream_seq);
+				strseq++;
+			} else {
+				strseq_m->stream = ntohs(at->rec.data.stream_number);
+				strseq_m->msg_id = ntohl(at->rec.data.stream_seq);
+				strseq_m++;
+			}
 			at = tp1;
 		}
 	}
