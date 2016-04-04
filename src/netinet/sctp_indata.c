@@ -156,6 +156,7 @@ sctp_build_readq_entry(struct sctp_tcb *stcb,
 	read_queue_e->sinfo_tsn = tsn;
 	read_queue_e->sinfo_cumtsn = tsn;
 	read_queue_e->sinfo_assoc_id = sctp_get_associd(stcb);
+	read_queue_e->top_fsn = read_queue_e->fsn_included = 0xffffffff;
 	TAILQ_INIT(&read_queue_e->reasm);
 	read_queue_e->whoFrom = net;
 	atomic_add_int(&net->ref_count, 1);
@@ -187,6 +188,7 @@ sctp_build_readq_entry_chk(struct sctp_tcb *stcb,
 	read_queue_e->sinfo_context = stcb->asoc.context;
 	TAILQ_INIT(&read_queue_e->reasm);
 	read_queue_e->sinfo_tsn = chk->rec.data.TSN_seq;
+	read_queue_e->top_fsn = read_queue_e->fsn_included = 0xffffffff;
 	read_queue_e->sinfo_cumtsn = chk->rec.data.TSN_seq;
 	read_queue_e->sinfo_assoc_id = sctp_get_associd(stcb);
 	read_queue_e->whoFrom = chk->whoTo;
@@ -992,6 +994,8 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc, s
 		return(0);
 	}
 	while (control) {
+		SCTPDBG(SCTP_DEBUG_XXX, "Looking at control:%p e(%d) ssn:%d top_fsn:%d inc_fsn:%d -uo\n",
+			control, control->end_added, control->sinfo_ssn, control->top_fsn, control->fsn_included);
 		nctl = TAILQ_NEXT(control, next_instrm);
 		if (control->end_added) {
 			/* We just put the last bit on */
@@ -1030,17 +1034,21 @@ done_un:
 		/* Can't add more */
 		return(0);
 	}
-deliver_more:
 	if (control == NULL) {
 		return(ret);
 	}
-	nctl = TAILQ_NEXT(control, next_instrm);
 	if (strm->last_sequence_delivered == control->sinfo_ssn) {
 		/* Ok the guy at the top was being partially delivered
 		 * completed, so we remove it. Note
 		 * the pd_api flag was taken off when the
 		 * chunk was merged on in sctp_queue_data_for_reasm below.
 		 */
+		nctl = TAILQ_NEXT(control, next_instrm);
+		SCTPDBG(SCTP_DEBUG_XXX,
+			"Looking at control:%p e(%d) ssn:%d top_fsn:%d inc_fsn:%d (lastdel:%d)- o\n",
+			control, control->end_added, control->sinfo_ssn,
+			control->top_fsn, control->fsn_included,
+			strm->last_sequence_delivered);
 		if (control->end_added) {
 			if (control->on_strm_q) {
 				if (control->on_strm_q != SCTP_ON_ORDERED ) {
@@ -1067,12 +1075,18 @@ deliver_more:
 		/* Can't add more must have gotten an un-ordered above being partially delivered. */
 		return(0);
 	}
+deliver_more:
 	next_to_del = strm->last_sequence_delivered + 1;
 	if (control) {
+		SCTPDBG(SCTP_DEBUG_XXX,
+			"Looking at control:%p e(%d) ssn:%d top_fsn:%d inc_fsn:%d (nxtdel:%d)- o\n",
+			control, control->end_added, control->sinfo_ssn, control->top_fsn, control->fsn_included,
+			next_to_del);
+		nctl = TAILQ_NEXT(control, next_instrm);
 		if ((control->sinfo_ssn == next_to_del) &&
 		    (control->first_frag_seen)) {
 			/* Ok we can deliver it onto the stream. */
-			if ((control->end_added) && (strm->pd_api_started == 0)) {
+			if (control->end_added) {
 				/* We are done with it afterwards */
 				if (control->on_strm_q) {
 					if (control->on_strm_q != SCTP_ON_ORDERED ) {
@@ -1094,10 +1108,12 @@ deliver_more:
 					goto out;
 				}
 			}
-			sctp_add_to_readq(stcb->sctp_ep, stcb,
-					  control,
-					  &stcb->sctp_socket->so_rcv, control->end_added,
-					  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
+			if (control->on_read_q == 0) {
+				sctp_add_to_readq(stcb->sctp_ep, stcb,
+						  control,
+						  &stcb->sctp_socket->so_rcv, control->end_added,
+						  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
+			}
 			strm->last_sequence_delivered = next_to_del;
 			if ((control->end_added) && (control->last_frag_seen)){
 				control = nctl;
@@ -1239,6 +1255,9 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	 */
 	if (chk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
 		/* Its the very first one. */
+		SCTPDBG(SCTP_DEBUG_XXX,
+			"chunk is a first fsn:%d becomes fsn_included\n",
+			chk->rec.data.fsn_num);
 		if (control->first_frag_seen) {
 			/*
 			 * Error on senders part, they either
@@ -1264,9 +1283,15 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		if(control->last_frag_seen == 0) {
 			/* Still willing to raise highest FSN seen */
 			if (SCTP_TSN_GT(chk->rec.data.fsn_num, control->top_fsn)) {
+				SCTPDBG(SCTP_DEBUG_XXX,
+					"We have a new top_fsn:%d\n",
+					chk->rec.data.fsn_num);
 				control->top_fsn = chk->rec.data.fsn_num;
 			}
 			if (chk->rec.data.rcv_flags & SCTP_DATA_LAST_FRAG) {
+				SCTPDBG(SCTP_DEBUG_XXX,
+					"The last fsn is now in place fsn:%d\n",
+					chk->rec.data.fsn_num);
 				control->last_frag_seen = 1;
 			}
 			if (SCTP_TSN_GE(control->fsn_included, chk->rec.data.fsn_num)) {
@@ -1279,6 +1304,9 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		} else {
 			if (chk->rec.data.rcv_flags & SCTP_DATA_LAST_FRAG) {
 				/* Second last? huh? */
+				SCTPDBG(SCTP_DEBUG_XXX,
+					"Duplicate last fsn:%d (top:%d) -- abort\n",
+					chk->rec.data.fsn_num, control->top_fsn);
 				sctp_abort_in_reasm(stcb, strm, control,
 						    chk, abort_flag,
 				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_6);
@@ -1286,6 +1314,9 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			}
 			if (SCTP_TSN_GE(control->fsn_included, chk->rec.data.fsn_num)) {
 				/* We have already delivered up to this so its a dup */
+				SCTPDBG(SCTP_DEBUG_XXX,
+					"New fsn:%d is already seen in included_fsn:%d -- abort\n",
+					chk->rec.data.fsn_num, control->fsn_included);
 				sctp_abort_in_reasm(stcb, strm, control, chk,
 				                    abort_flag,
 				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_7);
@@ -1293,18 +1324,28 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			}
 			/* validate not beyond top FSN if we have seen last one */
 			if (SCTP_TSN_GT(chk->rec.data.fsn_num, control->top_fsn)) {
+				SCTPDBG(SCTP_DEBUG_XXX,
+					"New fsn:%d is beyond or at top_fsn:%d -- abort\n",
+					chk->rec.data.fsn_num,
+					control->top_fsn);
 				sctp_abort_in_reasm(stcb, strm, control, chk,
 				                    abort_flag,
 				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_8);
 				return;
 			}
 		}
+		SCTPDBG(SCTP_DEBUG_XXX,
+			"chunk is a not first fsn:%d needs to be inserted\n",
+			chk->rec.data.fsn_num);
 		TAILQ_FOREACH(at, &control->reasm, sctp_next) {
 			if (SCTP_TSN_GT(at->rec.data.fsn_num, chk->rec.data.fsn_num)) {
 				/*
 				 * This one in queue is bigger than the new one, insert
 				 * the new one before at.
 				 */
+				SCTPDBG(SCTP_DEBUG_XXX,
+					"Insert it before fsn:%d\n",
+					at->rec.data.fsn_num);
 				asoc->size_on_reasm_queue += chk->send_size;
 				sctp_ucount_incr(asoc->cnt_on_reasm_queue);
 				TAILQ_INSERT_BEFORE(at, chk, sctp_next);
@@ -1319,6 +1360,9 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				 * compare to TSN somehow... sigh for now just blow
 				 * away the chunk!
 				 */
+				SCTPDBG(SCTP_DEBUG_XXX,
+					"Duplicate to fsn:%d -- abort\n",
+					at->rec.data.fsn_num);
 				sctp_abort_in_reasm(stcb, strm, control,
 						    chk, abort_flag,
 				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_9);
@@ -1327,6 +1371,8 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		}
 		if (inserted == 0) {
 			/* Goes on the end */
+			SCTPDBG(SCTP_DEBUG_XXX, "Inserting at tail of list fsn:%d\n",
+				chk->rec.data.fsn_num);
 			asoc->size_on_reasm_queue += chk->send_size;
 			sctp_ucount_incr(asoc->cnt_on_reasm_queue);
 			TAILQ_INSERT_TAIL(&control->reasm, chk, sctp_next);
@@ -1342,6 +1388,11 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		TAILQ_FOREACH_SAFE(at, &control->reasm, sctp_next, nat) {
 			if (at->rec.data.fsn_num == next_fsn) {
 				/* We can add this one now to the control */
+				SCTPDBG(SCTP_DEBUG_XXX,
+					"Adding more to control:%p at:%p fsn:%d next_fsn:%d included:%d\n",
+					control, at,
+					at->rec.data.fsn_num,
+					next_fsn, control->fsn_included);
 				TAILQ_REMOVE(&control->reasm, at, sctp_next);
 				sctp_add_chk_to_control(control, strm, stcb, asoc, at);
 				cnt_added++;
