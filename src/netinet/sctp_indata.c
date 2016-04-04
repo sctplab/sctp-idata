@@ -487,13 +487,22 @@ sctp_abort_in_reasm(struct sctp_tcb *stcb,
 {
 	char msg[SCTP_DIAG_INFO_LEN];
 	struct mbuf *oper;
-
-	snprintf(msg, sizeof(msg),
-		 "Reassembly problem at %x for TSN=%8.8x, SID=%4.4x, SSN=%4.4x",
-		 opspot,
-		 chk->rec.data.TSN_seq,
-		 chk->rec.data.stream_number,
-		 chk->rec.data.stream_seq);
+	if (stcb->asoc.idata_supported) {
+		snprintf(msg, sizeof(msg),
+			 "Reass %x,TSN=%8.8x,SID=%4.4x,FSN=%8.8x,MID:%8.8x",
+			 opspot,
+			 chk->rec.data.TSN_seq,
+			 chk->rec.data.stream_number,
+			 chk->rec.data.fsn_num, chk->rec.data.stream_seq);
+	} else {
+		snprintf(msg, sizeof(msg),
+			 "Reass %x,TSN=%8.8x,SID=%4.4x,FSN=%4.4x, SSN:%4.4x",
+			 opspot,
+			 chk->rec.data.TSN_seq,
+			 chk->rec.data.stream_number,
+			 chk->rec.data.fsn_num,
+			 (uint16_t)chk->rec.data.stream_seq);
+	}
 	oper = sctp_generate_cause(SCTP_CAUSE_PROTOCOL_VIOLATION, msg);
 	sctp_m_freem(chk->data);
 	chk->data = NULL;
