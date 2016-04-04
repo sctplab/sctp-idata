@@ -1483,7 +1483,10 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		clen = sizeof(struct sctp_idata_chunk);
 		tsn = ntohl(ch->dp.tsn);
 		msg_id = ntohl(nch->dp.msg_id);
-		fsn = ntohl(nch->dp.fsn);
+		if (ch->ch.chunk_flags & SCTP_DATA_FIRST_FRAG)
+			fsn = 0;
+		else
+			fsn = ntohl(nch->dp.fsn);
 		old_data = 0;
 	} else {
 		ch = (struct sctp_data_chunk *)sctp_m_getptr(*m, offset,
@@ -1496,6 +1499,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		nch = NULL;
 		old_data = 1;
 	}
+	chunk_flags = ch->ch.chunk_flags;
 	if ((size_t)chk_length == clen) {
 		/*
 		 * Need to send an abort since we had a
@@ -1509,7 +1513,6 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		*abort_flag = 1;
 		return (0);
 	}
-	chunk_flags = ch->ch.chunk_flags;
 	ordered = ((chunk_flags & SCTP_DATA_UNORDERED) == 0);
 	if ((chunk_flags & SCTP_DATA_SACK_IMMEDIATELY) == SCTP_DATA_SACK_IMMEDIATELY) {
 		asoc->send_sack = 1;
