@@ -1628,6 +1628,13 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	 * If its a fragmented message, lets see if we can
 	 * find the control on the reassembly queues.
 	 */
+	if ((chtype == SCTP_IDATA) && ((chunk_flags & SCTP_DATA_FIRST_FRAG) == 0) && (fsn == 0)) {
+		/* 
+		 *  The first *must* be fsn 0, and other 
+		 *  (middle/end) pieces can *not* be fsn 0.
+		 */
+		goto err_out;
+	}
 	if ((chunk_flags & SCTP_DATA_NOT_FRAG) != SCTP_DATA_NOT_FRAG) {
 		/* See if we can find the re-assembly entity */
 		control = find_reasm_entry(strm, msg_id, ordered, old_data);
