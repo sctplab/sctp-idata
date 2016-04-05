@@ -729,6 +729,28 @@ sctp_add_to_tail_pointer(struct sctp_queued_to_read *control, struct mbuf *m)
 	}
 }
 
+static void 
+sctp_build_readq_entry_from_ctl(struct sctp_queued_to_read *nc, struct sctp_queued_to_read *control)
+{
+	memset(nc, 0, sizeof(struct sctp_queued_to_read));
+	nc->sinfo_stream = control->sinfo_stream;
+	nc->sinfo_ssn = control->sinfo_ssn;
+	TAILQ_INIT(&nc->reasm);
+	nc->top_fsn = control->top_fsn;
+	nc->msg_id = control->msgid;
+	nc->sinfo_flags = control->flags;
+	nc->sinfo_ppid = control->sinfo_ppid;
+	nc->sinfo_context = control->sinfo_context;
+	nc->fsn_included = 0xffffffff;
+	nc->sinfo_tsn = control->sinfo_tsn;
+	nc->sinfo_cumtsn = control->sinfo_cumtsn;
+	nc->sinfo_assoc_id = control->sinfo_assoc_id;
+	nc->whoFrom = control->whoFrom;
+	atomic_add_int(&nc->whoFrom->ref_count, 1);
+	nc->stcb = control->stcb;
+	nc->port_from = control->port_from;
+}
+
 static int
 sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struct sctp_stream_in *strm,
 		     struct sctp_queued_to_read *control, uint32_t pd_point)
@@ -742,8 +764,9 @@ sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struc
 	 * entries in reality, unless the guy is sending both
 	 * unordered NDATA and unordered DATA...
 	 */
-	struct sctp_tmit_chunk *chk, *lchk;
+	struct sctp_tmit_chunk *chk, *lchk, *tchk;
 	uint32_t fsn;
+	struct sctp_queued_to_read *nc = NULL;
 	int cnt_added;
 	
 	if (control->first_frag_seen == 0) {
@@ -751,8 +774,9 @@ sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struc
 		return(1);
 	}
 	/* Collapse any we can */
-	fsn = control->fsn_included + 1;
 	cnt_added = 0;
+restart:
+	fsn = control->fsn_included + 1;
 	/* Now what can we add? */
 	TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, lchk) {
 		if (chk->rec.data.fsn_num == fsn) {
@@ -763,6 +787,39 @@ sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struc
 			cnt_added++;
 			if (control->end_added) {
 				/* We are done */
+				if (!TAILQ_EMPTY(&control->reasm)) {
+					/* 
+					 * Ok we have to move anything left on
+					 * the control queue to a new control.
+					 */
+					sctp_alloc_a_readq(stcb, nc);
+					sctp_build_readq_entry_from_ctl(nc, control);
+					tchk = TAILQ_FIRST(&control->reasm);
+					if (tchk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
+						TAILQ_REMOVE(&control->reasm, tchk, sctp_next);
+						nc->first_frag_seen = 1;
+						nc->fsn_included = tchk->rec.data.fsn_num;
+						nc->data = chk->data;
+						sctp_mark_non_revokable(asoc, tchk->rec.data.TSN_seq);
+						tchk->data = NULL;
+						sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
+						sctp_setup_tail_pointer(nc);
+						tchk = TAILQ_FIRST(&control->reasm);
+					}
+					/* Spin the rest onto the queue */
+					while (tchk) {
+						TAILQ_REMOVE(&control->reasm, tchk, sctp_next);
+						TAILQ_INSERT_TAIL(&nc->reasm, &tchk, sctp_next);
+						tchk = TAILQ_FIRST(&control->reasm);
+					}
+					/* Now lets add it to the queue after removing control */
+					TAILQ_INSERT_TAIL(&strm->uno_inqueue, nc, next_instrm);
+					nc->on_strm_q = SCTP_ON_UNORDERED;
+					if (control->on_strm_q) {
+						TAILQ_REMOVE(&strm->uno_inqueue, control);
+						control->on_strm_q = 0;
+					}
+				}
 				if (control->on_read_q == 0) {
 					sctp_add_to_readq(stcb->sctp_ep, stcb, control,
 							  &stcb->sctp_socket->so_rcv, control->end_added,
@@ -773,6 +830,12 @@ sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struc
 					control->pdapi_started = 0;
 				}
 				sctp_wakeup_the_read_socket(stcb->sctp_ep);
+				if (nc) && (nc->first_frag_seen) {
+					/* Switch to the new guy and continue */
+					control = nc;
+					nc = NULL;
+					goto restart;
+				}
 				return (1);
 			}
 		} else {
@@ -786,6 +849,7 @@ sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struc
 		                  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
 		strm->pd_api_started = 1;
 		control->pdapi_started = 1;
+		sctp_wakeup_the_read_socket(stcb->sctp_ep);
 		return (0);
 	} else {
 		return (1);
@@ -812,15 +876,52 @@ sctp_inject_old_data_unordered(struct sctp_tcb *stcb, struct sctp_association *a
 			chk->rec.data.fsn_num);
 		if (control->first_frag_seen) {
 			/*
-			 * Error on senders part, they either
-			 * sent us two data chunks with FIRST,
-			 * or they sent two un-ordered chunks that
-			 * were fragmented at the same time in the same stream.
+			 * In old un-ordered we can reassembly on
+			 * one control multiple messages. As long
+			 * as the next FIRST is greater then the old
+			 * first (TSN i.e. FSN wise)
 			 */
-			sctp_abort_in_reasm(stcb, strm, control, chk,
-			                    abort_flag,
-			                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_4);
-			return;
+			struct mbuf *tdata;
+			uint32_t tmp;
+
+			if (SCTP_TSN_GT(chk->rec.data.fsn_num, control->fsn_included)) {
+				/* Easy way the start of a new guy beyond the lowest */
+				goto place_chunk;
+			}
+			if ((chk->rec.data.fsn_num == control->fsn_included) ||
+			    (control->pdapi_started)) {
+				/* 
+				 * Ok this should not happen, if it does
+				 * we started the pd-api on the higher TSN (since
+				 * the equals part is a TSN failure it must be that).
+				 *
+				 * We are completly hosed in that case since I have
+				 * no way to recover. This really will only happen
+				 * if we can get more TSN's higher before the pd-api-point.
+				 */
+				sctp_abort_in_reasm(stcb, strm, control, chk,
+						    abort_flag,
+						    SCTP_FROM_SCTP_INDATA + SCTP_LOC_4);
+				return;
+			}
+			/*
+			 * Ok we have two firsts and the one we just got
+			 * is smaller than the one we previously placed.. yuck!
+			 * We must swap them out.
+			 */
+			/* swap the mbufs */
+			tdata = control->data;
+			control->data = chk->data;
+			chk->data = tdata;
+			/* Swap the lengths */
+			tmp = control->length;
+			control->length = chk->send_size;
+			chk->send_size = tmp;
+			/* Fix the FSN included */
+			tmp = control->fsn_included;
+			control->fsn_included = chk->rec.data.fsn_num;
+			chk->rec.data.fsn_num = tmp;
+			goto place_chunk;
 		}
 		control->first_frag_seen = 1;
 		control->top_fsn = control->fsn_included = chk->rec.data.fsn_num;
@@ -831,6 +932,7 @@ sctp_inject_old_data_unordered(struct sctp_tcb *stcb, struct sctp_association *a
 		sctp_setup_tail_pointer(control);
 		return;
 	}
+place_chunk:
 	if (TAILQ_EMPTY(&control->reasm)) {
 		TAILQ_INSERT_TAIL(&control->reasm, chk, sctp_next);
 		asoc->size_on_reasm_queue += chk->send_size;
