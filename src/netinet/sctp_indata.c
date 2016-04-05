@@ -441,15 +441,17 @@ sctp_abort_in_reasm(struct sctp_tcb *stcb,
 	struct mbuf *oper;
 	if (stcb->asoc.idata_supported) {
 		snprintf(msg, sizeof(msg),
-			 "Reass %x,TSN=%8.8x,SID=%4.4x,FSN=%8.8x,MID:%8.8x",
+			 "Reass %x,CF:%x,TSN=%8.8x,SID=%4.4x,FSN=%8.8x,MID:%8.8x",
 			 opspot,
+			 control->fsn_included,
 			 chk->rec.data.TSN_seq,
 			 chk->rec.data.stream_number,
 			 chk->rec.data.fsn_num, chk->rec.data.stream_seq);
 	} else {
 		snprintf(msg, sizeof(msg),
-			 "Reass %x,TSN=%8.8x,SID=%4.4x,FSN=%4.4x, SSN:%4.4x",
+			 "Reass %x, CI:%x,TSN=%8.8x,SID=%4.4x,FSN=%4.4x, SSN:%4.4x",
 			 opspot,
+			 control->fsn_included,
 			 chk->rec.data.TSN_seq,
 			 chk->rec.data.stream_number,
 			 chk->rec.data.fsn_num,
@@ -902,6 +904,8 @@ sctp_inject_old_data_unordered(struct sctp_tcb *stcb, struct sctp_association *a
 				sctp_abort_in_reasm(stcb, strm, control, chk,
 						    abort_flag,
 						    SCTP_FROM_SCTP_INDATA + SCTP_LOC_4);
+
+				*abort_flag = 1;
 				return;
 			}
 			/*
