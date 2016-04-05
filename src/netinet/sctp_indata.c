@@ -1206,7 +1206,7 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 				/* Ordered */
 				TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
 				control->on_strm_q = 0;
-			} else {
+			} else if (control->on_strm_q) {
 				panic("Unknown state on ctrl:%p on_strm_q:%d", control,
 				      control->on_strm_q);
 			}
