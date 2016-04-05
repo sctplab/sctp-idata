@@ -1303,12 +1303,20 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					chk->rec.data.fsn_num);
 				control->last_frag_seen = 1;
 			}
-			if (SCTP_TSN_GE(control->fsn_included, chk->rec.data.fsn_num)) {
-				/* We have already delivered up to this so its a dup */
-				sctp_abort_in_reasm(stcb, strm, control, chk,
-				                    abort_flag,
-				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_5);
-				return;
+			if (asoc->idata_supported || control->first_frag_seen) {
+				/* 
+				 * For IDATA we always check since we know that
+				 * the first fragment is 0. For old DATA we have
+				 * to receive the first before we knwo the first FSN
+				 * (which is the TSN).
+				 */
+				if (SCTP_TSN_GE(control->fsn_included, chk->rec.data.fsn_num)) {
+					/* We have already delivered up to this so its a dup */
+					sctp_abort_in_reasm(stcb, strm, control, chk,
+							    abort_flag,
+							    SCTP_FROM_SCTP_INDATA + SCTP_LOC_5);
+					return;
+				}
 			}
 		} else {
 			if (chk->rec.data.rcv_flags & SCTP_DATA_LAST_FRAG) {
@@ -1318,18 +1326,27 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					chk->rec.data.fsn_num, control->top_fsn);
 				sctp_abort_in_reasm(stcb, strm, control,
 						    chk, abort_flag,
-				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_6);
+						    SCTP_FROM_SCTP_INDATA + SCTP_LOC_6);
 				return;
 			}
-			if (SCTP_TSN_GE(control->fsn_included, chk->rec.data.fsn_num)) {
-				/* We have already delivered up to this so its a dup */
-				SCTPDBG(SCTP_DEBUG_XXX,
-					"New fsn:%d is already seen in included_fsn:%d -- abort\n",
-					chk->rec.data.fsn_num, control->fsn_included);
-				sctp_abort_in_reasm(stcb, strm, control, chk,
-				                    abort_flag,
-				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_7);
-				return;
+			if (asoc->idata_supported || control->first_frag_seen) {
+				/* 
+				 * For IDATA we always check since we know that
+				 * the first fragment is 0. For old DATA we have
+				 * to receive the first before we knwo the first FSN
+				 * (which is the TSN).
+				 */
+
+				if (SCTP_TSN_GE(control->fsn_included, chk->rec.data.fsn_num)) {
+					/* We have already delivered up to this so its a dup */
+					SCTPDBG(SCTP_DEBUG_XXX,
+						"New fsn:%d is already seen in included_fsn:%d -- abort\n",
+						chk->rec.data.fsn_num, control->fsn_included);
+					sctp_abort_in_reasm(stcb, strm, control, chk,
+							    abort_flag,
+							    SCTP_FROM_SCTP_INDATA + SCTP_LOC_7);
+					return;
+				}
 			}
 			/* validate not beyond top FSN if we have seen last one */
 			if (SCTP_TSN_GT(chk->rec.data.fsn_num, control->top_fsn)) {
@@ -1338,11 +1355,16 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					chk->rec.data.fsn_num,
 					control->top_fsn);
 				sctp_abort_in_reasm(stcb, strm, control, chk,
-				                    abort_flag,
-				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_8);
+						    abort_flag,
+						    SCTP_FROM_SCTP_INDATA + SCTP_LOC_8);
 				return;
 			}
 		}
+		/*
+		 * If we reach here, we need to place the
+		 * new chunk in the reassembly for this 
+		 * control.
+		 */
 		SCTPDBG(SCTP_DEBUG_XXX,
 			"chunk is a not first fsn:%d needs to be inserted\n",
 			chk->rec.data.fsn_num);
@@ -1374,7 +1396,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					at->rec.data.fsn_num);
 				sctp_abort_in_reasm(stcb, strm, control,
 						    chk, abort_flag,
-				                    SCTP_FROM_SCTP_INDATA + SCTP_LOC_9);
+						    SCTP_FROM_SCTP_INDATA + SCTP_LOC_9);
 				return;
 			}
 		}
@@ -1392,6 +1414,10 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	 * structure that are in seq if it makes sense.
 	 */
 	cnt_added = 0;
+	/*
+	 * If the first fragment has not been
+	 * seen there is no sense in looking.
+	 */
 	if (control->first_frag_seen) {
 		next_fsn = control->fsn_included + 1;
 		TAILQ_FOREACH_SAFE(at, &control->reasm, sctp_next, nat) {
@@ -1856,6 +1882,8 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		if ((chunk_flags & SCTP_DATA_NOT_FRAG) == SCTP_DATA_NOT_FRAG) {
 			control->data = dmbuf;
 			control->tail_mbuf = NULL;
+			control->end_added = control->last_frag_seen = control->first_frag_seen = 1;
+			control->top_fsn = control->fsn_included = fsn;
 		}
 		created_control = 1;
 	}
