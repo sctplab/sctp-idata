@@ -737,8 +737,8 @@ sctp_build_readq_entry_from_ctl(struct sctp_queued_to_read *nc, struct sctp_queu
 	nc->sinfo_ssn = control->sinfo_ssn;
 	TAILQ_INIT(&nc->reasm);
 	nc->top_fsn = control->top_fsn;
-	nc->msg_id = control->msgid;
-	nc->sinfo_flags = control->flags;
+	nc->msg_id = control->msg_id;
+	nc->sinfo_flags = control->sinfo_flags;
 	nc->sinfo_ppid = control->sinfo_ppid;
 	nc->sinfo_context = control->sinfo_context;
 	nc->fsn_included = 0xffffffff;
@@ -809,14 +809,14 @@ restart:
 					/* Spin the rest onto the queue */
 					while (tchk) {
 						TAILQ_REMOVE(&control->reasm, tchk, sctp_next);
-						TAILQ_INSERT_TAIL(&nc->reasm, &tchk, sctp_next);
+						TAILQ_INSERT_TAIL(&nc->reasm, tchk, sctp_next);
 						tchk = TAILQ_FIRST(&control->reasm);
 					}
 					/* Now lets add it to the queue after removing control */
 					TAILQ_INSERT_TAIL(&strm->uno_inqueue, nc, next_instrm);
 					nc->on_strm_q = SCTP_ON_UNORDERED;
 					if (control->on_strm_q) {
-						TAILQ_REMOVE(&strm->uno_inqueue, control);
+						TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
 						control->on_strm_q = 0;
 					}
 				}
@@ -830,7 +830,7 @@ restart:
 					control->pdapi_started = 0;
 				}
 				sctp_wakeup_the_read_socket(stcb->sctp_ep);
-				if (nc) && (nc->first_frag_seen) {
+				if ((nc) && (nc->first_frag_seen)) {
 					/* Switch to the new guy and continue */
 					control = nc;
 					nc = NULL;
