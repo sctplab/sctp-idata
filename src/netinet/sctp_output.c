@@ -5158,6 +5158,9 @@ sctp_send_initiate(struct sctp_inpcb *inp, struct sctp_tcb *stcb, int so_locked
 	pr_supported = (struct sctp_supported_chunk_types_param *)(mtod(m, caddr_t) + chunk_len);
 	if (stcb->asoc.prsctp_supported == 1) {
 		pr_supported->chunk_types[num_ext++] = SCTP_FORWARD_CUM_TSN;
+		if (stcb->asoc.idata_supported) {
+			pr_supported->chunk_types[num_ext++] = SCTP_IFORWARD_CUM_TSN;
+		}
 	}
 	if (stcb->asoc.auth_supported == 1) {
 		pr_supported->chunk_types[num_ext++] = SCTP_AUTHENTICATION;
@@ -5169,7 +5172,7 @@ sctp_send_initiate(struct sctp_inpcb *inp, struct sctp_tcb *stcb, int so_locked
 	if (stcb->asoc.reconfig_supported == 1) {
 		pr_supported->chunk_types[num_ext++] = SCTP_STREAM_RESET;
 	}
-	if (inp->idata_supported) {
+	if (stcb->asoc.idata_supported) {
 		pr_supported->chunk_types[num_ext++] = SCTP_IDATA;
 	}
 	if (stcb->asoc.nrsack_supported == 1) {
@@ -6406,6 +6409,10 @@ sctp_send_initiate_ack(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	if (((asoc != NULL) && (asoc->prsctp_supported == 1)) ||
 	    ((asoc == NULL) && (inp->prsctp_supported == 1))) {
 		pr_supported->chunk_types[num_ext++] = SCTP_FORWARD_CUM_TSN;
+		if (((asoc != NULL) && (asoc->idata_supported == 1)) ||
+		    ((asoc == NULL) && (inp->idata_supported == 1))) {
+			pr_supported->chunk_types[num_ext++] = SCTP_IFORWARD_CUM_TSN;
+		}
 	}
 	if (((asoc != NULL) && (asoc->auth_supported == 1)) ||
 	    ((asoc == NULL) && (inp->auth_supported == 1))) {
@@ -6420,7 +6427,8 @@ sctp_send_initiate_ack(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	    ((asoc == NULL) && (inp->reconfig_supported == 1))) {
 		pr_supported->chunk_types[num_ext++] = SCTP_STREAM_RESET;
 	}
-	if (inp->idata_supported) {
+	if (((asoc != NULL) && (asoc->idata_supported == 1)) ||
+	    ((asoc == NULL) && (inp->idata_supported == 1))) {
 		pr_supported->chunk_types[num_ext++] = SCTP_IDATA;
 	}
 	if (((asoc != NULL) && (asoc->nrsack_supported == 1)) ||
