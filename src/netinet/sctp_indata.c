@@ -5485,7 +5485,7 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 						TAILQ_REMOVE(&strm->inqueue, ctl, next_instrm);
 					} else if (ctl->on_strm_q == SCTP_ON_UNORDERED){
 						TAILQ_REMOVE(&strm->uno_inqueue, ctl, next_instrm);
-					} else {
+					} else if (ctl->on_strm_q) {
 						panic("strm:%p ctl:%p unknown %d",
 						      strm, ctl, ctl->on_strm_q);
 					}
