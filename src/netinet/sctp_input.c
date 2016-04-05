@@ -432,7 +432,6 @@ sctp_process_init(struct sctp_init_chunk *cp, struct sctp_tcb *stcb)
 		asoc->strmin[i].last_sequence_delivered = 0xffffffff;
 		TAILQ_INIT(&asoc->strmin[i].inqueue);
 		TAILQ_INIT(&asoc->strmin[i].uno_inqueue);
-		asoc->strmin[i].uno_pd = NULL;
 		asoc->strmin[i].pd_api_started = 0;
 		asoc->strmin[i].delivery_started = 0;
 	}
@@ -4230,7 +4229,6 @@ sctp_handle_str_reset_add_strm(struct sctp_tcb *stcb, struct sctp_tmit_chunk *ch
 				TAILQ_INIT(&stcb->asoc.strmin[i].uno_inqueue);
 				stcb->asoc.strmin[i].stream_no = i;
 				stcb->asoc.strmin[i].last_sequence_delivered = 0xffffffff;
-				stcb->asoc.strmin[i].uno_pd = NULL;
 				stcb->asoc.strmin[i].pd_api_started = 0;
 				stcb->asoc.strmin[i].delivery_started = 0;
 			}

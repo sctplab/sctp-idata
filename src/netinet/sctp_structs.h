@@ -606,7 +606,6 @@ TAILQ_HEAD(sctpwheelunrel_listhead, sctp_stream_in);
 struct sctp_stream_in {
 	struct sctp_readhead inqueue;
 	struct sctp_readhead uno_inqueue;
-	struct sctp_queued_to_read *uno_pd;	/* For old style */
 	uint32_t last_sequence_delivered;	/* used for re-order */
 	uint16_t stream_no;
 	uint8_t  delivery_started;
