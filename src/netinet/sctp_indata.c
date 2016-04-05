@@ -787,6 +787,7 @@ restart:
 			sctp_add_chk_to_control(control, strm, stcb, asoc, chk);
 			fsn++;
 			cnt_added++;
+			chk = NULL;
 			if (control->end_added) {
 				/* We are done */
 				if (!TAILQ_EMPTY(&control->reasm)) {
@@ -801,10 +802,10 @@ restart:
 						TAILQ_REMOVE(&control->reasm, tchk, sctp_next);
 						nc->first_frag_seen = 1;
 						nc->fsn_included = tchk->rec.data.fsn_num;
-						nc->data = chk->data;
+						nc->data = tchk->data;
 						sctp_mark_non_revokable(asoc, tchk->rec.data.TSN_seq);
 						tchk->data = NULL;
-						sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
+						sctp_free_a_chunk(stcb, tchk, SCTP_SO_NOT_LOCKED);
 						sctp_setup_tail_pointer(nc);
 						tchk = TAILQ_FIRST(&control->reasm);
 					}
@@ -830,6 +831,10 @@ restart:
 				if (control->pdapi_started) {
 					strm->pd_api_started = 0;
 					control->pdapi_started = 0;
+				}
+				if (control->on_strm_q) {
+					TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
+					control->on_strm_q = 0;
 				}
 				sctp_wakeup_the_read_socket(stcb->sctp_ep);
 				if ((nc) && (nc->first_frag_seen)) {
@@ -905,7 +910,6 @@ sctp_inject_old_data_unordered(struct sctp_tcb *stcb, struct sctp_association *a
 						    abort_flag,
 						    SCTP_FROM_SCTP_INDATA + SCTP_LOC_4);
 
-				*abort_flag = 1;
 				return;
 			}
 			/*
@@ -1250,7 +1254,6 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			sctp_abort_in_reasm(stcb, strm, control, chk,
 					    abort_flag,
 					    SCTP_FROM_SCTP_INDATA + SCTP_LOC_6);
-
 			return;
 		}
 		if ((tsn == (asoc->cumulative_tsn + 1) && (asoc->idata_supported == 0))) {
