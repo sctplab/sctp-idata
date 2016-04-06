@@ -6693,7 +6693,7 @@ sctp_sorecvmsg(struct socket *so,
 			if ((control->length > 0) && (control->data == NULL)) {
 				/* big trouble.. we have the lock and its corrupt? */
 #ifdef INVARIANTS
-				panic ("Impossible data==NULL length !=0 control:%p stcb:%p length:%d", control, stcb, control->length);
+				panic ("Impossible data==NULL length !=0");
 #endif
 				out_flags |= MSG_EOR;
 				out_flags |= MSG_TRUNC;
