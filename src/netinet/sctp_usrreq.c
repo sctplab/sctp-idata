@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 297880 2016-04-12 21:40:54Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 297990 2016-04-14 19:59:21Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -409,13 +409,15 @@ void *
 #endif
 sctp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 {
-	struct ip *ip = vip;
+	struct ip *outer_ip, *inner_ip;
 	struct sctphdr *sh;
-	struct icmp *icmph;
-	uint32_t vrf_id;
+	struct icmp *icmp;
+	struct sctp_inpcb *inp;
+	struct sctp_tcb *stcb;
+	struct sctp_nets *net;
+	struct sctp_init_chunk *ch;
+	struct sockaddr_in to, from;
 
-	/* FIX, for non-bsd is this right? */
-	vrf_id = SCTP_DEFAULT_VRFID;
 	if (sa->sa_family != AF_INET ||
 	    ((struct sockaddr_in *)sa)->sin_addr.s_addr == INADDR_ANY) {
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__Windows__)
@@ -425,7 +427,7 @@ sctp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 #endif
 	}
 	if (PRC_IS_REDIRECT(cmd)) {
-		ip = 0;
+		vip = NULL;
 	} else if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0) {
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__Windows__)
 		return;
@@ -433,16 +435,12 @@ sctp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		return (NULL);
 #endif
 	}
-	if (ip) {
-		struct sctp_inpcb *inp = NULL;
-		struct sctp_tcb *stcb = NULL;
-		struct sctp_nets *net = NULL;
-		struct sockaddr_in to, from;
-
-		icmph = (struct icmp *)((caddr_t)ip - (sizeof(struct icmp) -
-		                                       sizeof(struct ip)));
-
-		sh = (struct sctphdr *)((caddr_t)ip + (ip->ip_hl << 2));
+	if (vip != NULL) {
+		inner_ip = (struct ip *)vip;
+		icmp = (struct icmp *)((caddr_t)inner_ip -
+		    (sizeof(struct icmp) - sizeof(struct ip)));
+		outer_ip = (struct ip *)((caddr_t)icmp - sizeof(struct ip));
+		sh = (struct sctphdr *)((caddr_t)inner_ip + (inner_ip->ip_hl << 2));
 		bzero(&to, sizeof(to));
 		bzero(&from, sizeof(from));
 		from.sin_family = to.sin_family = AF_INET;
@@ -450,17 +448,20 @@ sctp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		from.sin_len = to.sin_len = sizeof(to);
 #endif
 		from.sin_port = sh->src_port;
-		from.sin_addr = ip->ip_src;
+		from.sin_addr = inner_ip->ip_src;
 		to.sin_port = sh->dest_port;
-		to.sin_addr = ip->ip_dst;
+		to.sin_addr = inner_ip->ip_dst;
 		/*
 		 * 'to' holds the dest of the packet that failed to be sent.
 		 * 'from' holds our local endpoint address. Thus we reverse
 		 * the to and the from in the lookup.
 		 */
+		inp = NULL;
+		net = NULL;
 		stcb = sctp_findassociation_addr_sa((struct sockaddr *)&to,
 		                                    (struct sockaddr *)&from,
-		                                    &inp, &net, 1, vrf_id);
+		                                    &inp, &net, 1,
+		                                    SCTP_DEFAULT_VRFID);
 		if ((stcb != NULL) &&
 		    (net != NULL) &&
 		    (inp != NULL) &&
@@ -477,23 +478,34 @@ sctp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 					return;
 				}
 			} else {
-				/*
-				 * In this case we could check if we got an
-				 * INIT chunk and if the initiate tag matches.
-				 * But this is not there yet...
-				 */
-				SCTP_TCB_UNLOCK(stcb);
-				return;
+				if (ntohs(outer_ip->ip_len) >=
+				    sizeof(struct ip) +
+				    8 + (inner_ip->ip_hl << 2) + 20) {
+					/*
+					 * In this case we can check if we
+					 * got an INIT chunk and if the
+					 * initiate tag matches.
+					 */
+					ch = (struct sctp_init_chunk *)(sh + 1);
+					if ((ch->ch.chunk_type != SCTP_INITIATION) ||
+					    (ntohl(ch->init.initiate_tag) != stcb->asoc.my_vtag)) {
+						SCTP_TCB_UNLOCK(stcb);
+						return;
+					}
+				} else {
+					SCTP_TCB_UNLOCK(stcb);
+					return;
+				}
 			}
 			sctp_notify(inp, stcb, net,
-			            icmph->icmp_type,
-			            icmph->icmp_code,
+			            icmp->icmp_type,
+			            icmp->icmp_code,
 #if defined(__FreeBSD__) && __FreeBSD_version >= 1000000
-			            ntohs(ip->ip_len),
+			            ntohs(inner_ip->ip_len),
 #else
-			            ip->ip_len,
+			            ip_inner->ip_len,
 #endif
-			            ntohs(icmph->icmp_nextmtu));
+			            ntohs(icmp->icmp_nextmtu));
 		} else {
 #if defined(__FreeBSD__) && __FreeBSD_version < 500000
 			/*
