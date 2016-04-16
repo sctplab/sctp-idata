@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 298066 2016-04-15 15:46:41Z pfg $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 298132 2016-04-16 21:34:49Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -285,7 +285,7 @@ sctp_pathmtu_adjustment(struct sctp_tcb *stcb, uint16_t nxtsz)
 
 #ifdef INET
 #if !defined(__Userspace__)
-static void
+void
 sctp_notify(struct sctp_inpcb *inp,
             struct sctp_tcb *stcb,
             struct sctp_nets *net,
@@ -318,13 +318,7 @@ sctp_notify(struct sctp_inpcb *inp,
 #else
 	    (icmp_code == ICMP_UNREACH_FILTER_PROHIB)) {
 #endif
-
-		/*
-		 * Hmm reachablity problems we must examine closely. If its
-		 * not reachable, we may have lost a network. Or if there is
-		 * NO protocol at the other end named SCTP. well we consider
-		 * it a OOTB abort.
-		 */
+		/* Mark the net unreachable. */
 		if (net->dest_state & SCTP_ADDR_REACHABLE) {
 			/* OK, that destination is NOT reachable. */
 			net->dest_state &= ~SCTP_ADDR_REACHABLE;
@@ -336,14 +330,7 @@ sctp_notify(struct sctp_inpcb *inp,
 		SCTP_TCB_UNLOCK(stcb);
 	} else  if ((icmp_code == ICMP_UNREACH_PROTOCOL) ||
 		    (icmp_code == ICMP_UNREACH_PORT)) {
-		/*
-		 * Here the peer is either playing tricks on us,
-		 * including an address that belongs to someone who
-		 * does not support SCTP OR was a userland
-		 * implementation that shutdown and now is dead. In
-		 * either case treat it like a OOTB abort with no
-		 * TCB
-		 */
+		/* Treat it like an ABORT. */
 		sctp_abort_notification(stcb, 1, 0, NULL, SCTP_SO_NOT_LOCKED);
 #if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
 		so = SCTP_INP_SO(inp);
@@ -416,7 +403,7 @@ sctp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 	struct sctp_tcb *stcb;
 	struct sctp_nets *net;
 	struct sctp_init_chunk *ch;
-	struct sockaddr_in to, from;
+	struct sockaddr_in src, dst;
 
 	if (sa->sa_family != AF_INET ||
 	    ((struct sockaddr_in *)sa)->sin_addr.s_addr == INADDR_ANY) {
@@ -441,25 +428,29 @@ sctp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		    (sizeof(struct icmp) - sizeof(struct ip)));
 		outer_ip = (struct ip *)((caddr_t)icmp - sizeof(struct ip));
 		sh = (struct sctphdr *)((caddr_t)inner_ip + (inner_ip->ip_hl << 2));
-		bzero(&to, sizeof(to));
-		bzero(&from, sizeof(from));
-		from.sin_family = to.sin_family = AF_INET;
+		memset(&src, 0, sizeof(struct sockaddr_in));
+		src.sin_family = AF_INET;
 #ifdef HAVE_SIN_LEN
-		from.sin_len = to.sin_len = sizeof(to);
+		src.sin_len = sizeof(struct sockaddr_in);
 #endif
-		from.sin_port = sh->src_port;
-		from.sin_addr = inner_ip->ip_src;
-		to.sin_port = sh->dest_port;
-		to.sin_addr = inner_ip->ip_dst;
+		src.sin_port = sh->src_port;
+		src.sin_addr = inner_ip->ip_src;
+		memset(&dst, 0, sizeof(struct sockaddr_in));
+		dst.sin_family = AF_INET;
+#ifdef HAVE_SIN_LEN
+		dst.sin_len = sizeof(struct sockaddr_in);
+#endif
+		dst.sin_port = sh->dest_port;
+		dst.sin_addr = inner_ip->ip_dst;
 		/*
-		 * 'to' holds the dest of the packet that failed to be sent.
-		 * 'from' holds our local endpoint address. Thus we reverse
-		 * the to and the from in the lookup.
+		 * 'dst' holds the dest of the packet that failed to be sent.
+		 * 'src' holds our local endpoint address. Thus we reverse
+		 * the dst and the src in the lookup.
 		 */
 		inp = NULL;
 		net = NULL;
-		stcb = sctp_findassociation_addr_sa((struct sockaddr *)&to,
-		                                    (struct sockaddr *)&from,
+		stcb = sctp_findassociation_addr_sa((struct sockaddr *)&dst,
+		                                    (struct sockaddr *)&src,
 		                                    &inp, &net, 1,
 		                                    SCTP_DEFAULT_VRFID);
 		if ((stcb != NULL) &&

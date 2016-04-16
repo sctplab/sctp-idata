@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_var.h 297855 2016-04-12 11:48:54Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_var.h 298132 2016-04-16 21:34:49Z tuexen $");
 #endif
 
 #ifndef _NETINET_SCTP_VAR_H_
@@ -455,6 +455,8 @@ void sctp_init __P((void));
 void sctp_init(struct protosw *pp, struct domain *dp);
 #else
 void sctp_init(void);
+void sctp_notify(struct sctp_inpcb *, struct sctp_tcb *, struct sctp_nets *,
+    uint8_t, uint8_t, uint16_t, uint16_t);
 #endif
 void sctp_finish(void);
 #if defined(__FreeBSD__) || defined(__Windows__) || defined(__Userspace__)
