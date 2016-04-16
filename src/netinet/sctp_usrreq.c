@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 297990 2016-04-14 19:59:21Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 298066 2016-04-15 15:46:41Z pfg $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -694,7 +694,7 @@ sctp_attach(struct socket *so, int proto SCTP_UNUSED, struct proc *p SCTP_UNUSED
 #endif
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
-	if (inp != 0) {
+	if (inp != NULL) {
 		SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, EINVAL);
 		return (EINVAL);
 	}
