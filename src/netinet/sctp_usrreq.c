@@ -478,6 +478,7 @@ sctp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 					return;
 				}
 			} else {
+#if defined(__FreeBSD__)
 				if (ntohs(outer_ip->ip_len) >=
 				    sizeof(struct ip) +
 				    8 + (inner_ip->ip_hl << 2) + 20) {
@@ -496,6 +497,10 @@ sctp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 					SCTP_TCB_UNLOCK(stcb);
 					return;
 				}
+#else
+				SCTP_TCB_UNLOCK(stcb);
+				return;
+#endif
 			}
 			sctp_notify(inp, stcb, net,
 			            icmp->icmp_type,
