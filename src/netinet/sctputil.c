@@ -7965,8 +7965,8 @@ sctp_recv_icmp6_tunneled_packet(int cmd, struct sockaddr *sa, void *d, void *ctx
 		}
 		type = ip6cp->ip6c_icmp6->icmp6_type;
 		code = ip6cp->ip6c_icmp6->icmp6_code;
-		if ((type = ICMP6_DST_UNREACH) &&
-		    (code = ICMP6_DST_UNREACH_NOPORT)) {
+		if ((type == ICMP6_DST_UNREACH) &&
+		    (code == ICMP6_DST_UNREACH_NOPORT)) {
 			type = ICMP6_PARAM_PROB;
 			code = ICMP6_PARAMPROB_NEXTHEADER;
 		}
