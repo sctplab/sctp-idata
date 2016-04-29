@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 298800 2016-04-29 20:22:01Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 298803 2016-04-29 20:33:20Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -7799,8 +7799,8 @@ sctp_recv_icmp_tunneled_packet(int cmd, struct sockaddr *sa, void *vip, void *ct
 		}
 		type = icmp->icmp_type;
 		code = icmp->icmp_code;
-		if ((type = ICMP_UNREACH) &&
-		    (code = ICMP_UNREACH_PORT)) {
+		if ((type == ICMP_UNREACH) &&
+		    (code == ICMP_UNREACH_PORT)) {
 			code = ICMP_UNREACH_PROTOCOL;
 		}
 		sctp_notify(inp, stcb, net, type, code,
