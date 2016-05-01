@@ -13733,12 +13733,12 @@ sctp_lower_sosend(struct socket *so,
 #endif
 			stcb = sctp_aloc_assoc(inp, addr, &error, 0, vrf_id,
 			                       inp->sctp_ep.pre_open_stream_count,
+			                       inp->sctp_ep.port,
 #if !(defined( __Panda__) || defined(__Userspace__))
-					       p
+			                       p);
 #else
-					       (struct proc *)NULL
+			                       (struct proc *)NULL);
 #endif
-				);
 			if (stcb == NULL) {
 				/* Error is setup for us in the call */
 				goto out_unlocked;
