@@ -839,6 +839,10 @@ restart:
 					sctp_add_to_readq(stcb->sctp_ep, stcb, control,
 							  &stcb->sctp_socket->so_rcv, control->end_added,
 							  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
+#if defined(__Userspace__)
+				} else {
+					sctp_invoke_recv_callback(stcb->sctp_ep, stcb, control, SCTP_READ_LOCK_NOT_HELD);
+#endif
 				}
 				sctp_wakeup_the_read_socket(stcb->sctp_ep, stcb, SCTP_SO_NOT_LOCKED);
 				if ((nc) && (nc->first_frag_seen)) {
@@ -1486,6 +1490,9 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		}
 	}
 	if (do_wakeup) {
+#if defined(__Userspace__)
+		sctp_invoke_recv_callback(stcb->sctp_ep, stcb, control, SCTP_READ_LOCK_NOT_HELD);
+#endif
 		/* Need to wakeup the reader */
 		sctp_wakeup_the_read_socket(stcb->sctp_ep, stcb, SCTP_SO_NOT_LOCKED);
 	}
