@@ -318,9 +318,9 @@ support. For example, it is not possible to interleave multiple ordered
 or unordered user messages from the same stream.</t>
 
 <t>The sender MUST NOT be fragmenting more than one ordered message
-in any one stream at any time.
+in any given stream at any time.
 The sender MUST NOT be fragmenting more than one unordered
-user message in any one stream at any time.
+user message in any given stream at any time.
 The sender MAY fragment one ordered and one unordered user message
 within a single stream.
 At any time a sender MAY fragment an ordered and an unordered
