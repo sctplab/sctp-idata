@@ -406,7 +406,7 @@ delivered by the application. No modification of the order is done at all.</t>
 by cycling around non-empty stream queues.</t>
 </section>
 <section anchor='sctp_ss_rr_pkt'
-         title='Round Robin Scheduler per Packet(SCTP_SS_RR_PKT)'>
+         title='Round Robin Scheduler per Packet (SCTP_SS_RR_PKT)'>
 <t>This is a round-robin scheduler but bundles only user messages of the same
 stream in one packet. This minimizes head-of-line blocking when a packet
 is lost because only a single stream is affected.</t>
