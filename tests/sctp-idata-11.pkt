@@ -47,5 +47,10 @@
 +0.1 < sctp: DATA[flgs=B, len=20, tsn=1, sid=0, ssn=0, ppid=1234]
 +0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=..., gaps=[], dups=[]]
 +0.1 < sctp: DATA[flgs=BE, len=20, tsn=2, sid=0, ssn=0, ppid=1234]
+#ifdef Omnet
++0.0 > sctp: ABORT[flgs=0]
+#endif
+#ifdef FreeBSD
 +0.0 > sctp: ABORT[flgs=0, PROTOCOL_VIOLATION[info=...]]
+#endif
 +0.0 close(4) = 0
