@@ -50,10 +50,8 @@
 +0.1 < sctp: I-DATA[flgs=0, len=24, tsn=2, sid=0, mid=1, fsn=0]
 #ifdef Omnet
 +0.0 > sctp: ABORT[flgs=0]
-+0.0 close(4) = 0
 #endif
 #ifdef FreeBSD
 +0.0 > sctp: ABORT[flgs=0, PROTOCOL_VIOLATION[info=...]]
-+0.0 close(4) = 0
 #endif
-
++0.0 close(4) = 0

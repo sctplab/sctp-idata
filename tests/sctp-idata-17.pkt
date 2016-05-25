@@ -48,14 +48,8 @@
 +0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=..., gaps=[], dups=[]]
 +0.0 recv(4, ..., 100, 0) = 4
 +0.1 < sctp: DATA[flgs=UBE, len=20, tsn=2, sid=1, ssn=0, ppid=1234]
-#ifdef Omnet
-+0.0 > sctp: ERROR[flgs=0, INVALID_STREAM_IDENTIFIER[sid=1]];
-+0.2 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[], dups=[]]
-#endif
-#ifdef FreeBSD
 +0.0 > sctp: ERROR[flgs=0, INVALID_STREAM_IDENTIFIER[sid=1]];
              SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[], dups=[]]
-#endif
 // Tear down the association.
 +0.1 < sctp: SHUTDOWN[flgs=0, cum_tsn=0]
 +0.0 > sctp: SHUTDOWN_ACK[flgs=0]
