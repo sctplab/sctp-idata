@@ -45,5 +45,10 @@
 +0.0 close(3) = 0
 // Inject an empty DATA chunk.
 +0.1 < sctp: DATA[flgs=BE, len=16, tsn=1, sid=0, ssn=0, ppid=1234]
+#ifdef Omnet
++0.0 > sctp: ABORT[flgs=0]
+#endif
+#ifdef FreeBSD
 +0.0 > sctp: ABORT[flgs=0, NO_USER_DATA[tsn=1]]
+#endif
 +0.0 close(4) = 0

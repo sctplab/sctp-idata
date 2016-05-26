@@ -49,5 +49,5 @@
 +0.0 recv(4, ..., 100, 0) = 4
 +0.1 < sctp: ABORT[flgs=0];
              DATA[flgs=BE, len=20, tsn=1, sid=0, ssn=0, ppid=1234]
-+0.1 getsockopt(4, SOL_SOCKET, SO_ERROR, [ECONNRESET], [4]) = 0 
++0.1 getsockopt(4, SOL_SOCKET, SO_ERROR, [ECONNRESET], [4]) = 0
 +0.0 close(4) = 0
