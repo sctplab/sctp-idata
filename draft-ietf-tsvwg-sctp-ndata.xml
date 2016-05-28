@@ -387,13 +387,8 @@ that the implementation of <xref target='RFC6525'/> needs to handle this.</t>
 
 <section title="Stream Schedulers">
 <t>This section defines several stream schedulers.
-The stream schedulers which can be used even without the user message
-interleaving support as defined in <xref target='interleaving'/> are described
-in <xref target='ss_without_umi'/>.
-In <xref target='ss_with_umi'/> stream schedulers requiring user message
-interleaving defined in <xref target='interleaving'/> are described.</t>
-<section anchor='ss_without_umi'
-         title="Stream Schedulers Not Requiring User Message Interleaving Support">
+The streams schedulers may behave differently depending on whether user
+message interleaving has been negotiated for the association or not.</t>
 <section anchor='sctp_ss_fcfs'
          title='First Come First Serve (SCTP_SS_FCFS)'>
 <t>The simple first-come, first-serve scheduler of user messages is used.
@@ -432,37 +427,9 @@ configurable per outgoing SCTP stream.
 This scheduler considers the lengths of the messages of each stream and
 schedules them in a certain way to use the bandwidth according to the given
 weights. The details are implementation specific.</t>
-</section>
-</section>
-<section anchor='ss_with_umi'
-         title="Stream Schedulers Requiring User Message Interleaving Support">
-<section anchor='sctp_ss_rr_inter'
-         title='Round Robin Scheduler (SCTP_SS_RR_INTER)'>
-<t>This scheduler is similar to the one described in <xref target='sctp_ss_rr'/>,
-but based on I-DATA chunks instead of user messages.</t>
-</section>
-<section anchor='sctp_ss_rr_pkt_inter'
-         title='Round Robin Scheduler per Packet (SCTP_SS_RR_PKT_INTER)'>
-<t>This scheduler is similar to the one described in <xref target='sctp_ss_rr_pkt'/>,
-but based on I-DATA chunks instead of user messages.</t>
-</section>
-<section anchor='sctp_ss_prio_inter'
-         title='Priority Based Scheduler (SCTP_SS_PRIO_INTER)'>
-<t>This scheduler is similar to the one described in <xref target='sctp_ss_prio'/>,
-but based on I-DATA chunks instead of user messages.</t>
-</section>
-<section anchor='sctp_ss_fb_inter'
-         title='Fair Bandwidth Scheduler (SCTP_SS_FB_INTER)'>
-<t>This scheduler is similar to the one described in <xref target='sctp_ss_fb'/>,
-but based on I-DATA chunks instead of user messages.</t>
-</section>
-<section anchor='sctp_ss_wfq_inter'
-         title='Weighted Fair Queueing Scheduler (SCTP_SS_WFQ_INTER)'>
-<t>This scheduler is similar to the one described in <xref target='sctp_ss_wfq'/>,
-but based on I-DATA chunks instead of user messages.
-This scheduler is used for WebRTC Datachannels
-as specified in <xref target='I-D.ietf-rtcweb-data-channel'/>.</t>
-</section>
+<t>This scheduler in combination with user message interleaving is used for
+WebRTC Datachannels as specified in
+<xref target='I-D.ietf-rtcweb-data-channel'/>.</t>
 </section>
 </section>
 
@@ -587,21 +554,6 @@ Use the scheduler specified in <xref target='sctp_ss_fb'/>.</t>
 <t hangText="SCTP_SS_WFQ:">
 Use the scheduler specified in <xref target='sctp_ss_wfq'/>.
 The weight can be assigned with the sctp_stream_value struct.</t>
-<t hangText="SCTP_SS_RR_INTER:">
-Use the scheduler specified in <xref target='sctp_ss_rr_inter'/>.</t>
-<t hangText="SCTP_SS_RR_PKT_INTER:">
-Use the scheduler specified in <xref target='sctp_ss_rr_pkt_inter'/>.</t>
-<t hangText="SCTP_SS_PRIO_INTER:">
-Use the scheduler specified in <xref target='sctp_ss_prio_inter'/>.
-The priority can be assigned with the sctp_stream_value struct.
-The higher the assigned value, the lower the priority, that is the default
-value 0 is the highest priority and therefore the default scheduling will
-be used if no priorities have been assigned.</t>
-<t hangText="SCTP_SS_FB_INTER:">
-Use the scheduler specified in <xref target='sctp_ss_fb_inter'/>.</t>
-<t hangText="SCTP_SS_WFQ_INTER:">
-Use the scheduler specified in <xref target='sctp_ss_wfq_inter'/>.
-The weight can be assigned with the sctp_stream_value struct.</t>
 </list></t>
 </list></t>
 </section>
@@ -619,11 +571,6 @@ streams as shown in the following table:</t>
 <c>SCTP_SS_PRIO</c>               <c>yes</c>
 <c>SCTP_SS_FB</c>                 <c>no</c>
 <c>SCTP_SS_WFQ</c>                <c>yes</c>
-<c>SCTP_SS_RR_INTER</c>           <c>no</c>
-<c>SCTP_SS_RR_PKT_INTER</c>       <c>no</c>
-<c>SCTP_SS_PRIO_INTER</c>         <c>yes</c>
-<c>SCTP_SS_FB_INTER</c>           <c>no</c>
-<c>SCTP_SS_WFQ_INTER</c>          <c>yes</c>
 </texttable>
 <t>This is achieved with the SCTP_STREAM_SCHEDULER_VALUE option and the
 corresponding struct sctp_stream_value.
