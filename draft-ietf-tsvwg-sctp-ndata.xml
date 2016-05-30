@@ -378,8 +378,9 @@ has been replaced by the 32-bit Message Identifier (MID).</t>
 <xref target='RFC6525'/>, the two counters (one for the ordered messages,
 one for the unordered messages) used for the MID MUST be reset to 0
 correspondingly.</t>
-<t>Since most schedulers require late TSN assignment, it should be noted
-that the implementation of <xref target='RFC6525'/> needs to handle this.</t>
+<t>Since most schedulers, especially all schedulers when supporting user
+message interleaving, require late TSN assignment, it should be noted that the
+implementation of <xref target='RFC6525'/> needs to handle this.</t>
 <!-- FIXME: Do we need to be more explicit here? -->
 </section>
 </section>
