@@ -437,7 +437,22 @@ described in this document.</t>
 <t>Please note that this section is informational only.</t>
 
 <section title="Exposition of the Stream Sequence Number (SSN)">
-<t>.</t>
+<t>The socket API defined in <xref target='RFC6458'/> defines several structures
+in which the SSN of a received user message is exposed to the application.
+The list of these structures includes:
+<list style="hanging">
+<t hangText="struct sctp_sndrcvinfo">
+<vspace blankLines="0"/>
+Specfied in Section 5.3.2 of <xref target='RFC6458'/> and being deprecated.</t>
+<t hangText="struct sctp_extrcvinfo">
+<vspace blankLines="0"/>
+Specfied in Section 5.3.3 of <xref target='RFC6458'/> and being deprecated.</t>
+<t hangText="struct sctp_rcvinfo">
+<vspace blankLines="0"/>
+Specfied in Section 5.3.5 of <xref target='RFC6458'/>.</t>
+</list>
+If user message interleaving is used, the lower order 16 bits of the MID are
+used as the SSN when filling out these structures.</t>
 </section>
 
 <section title="SCTP_ASSOC_CHANGE Notification">
