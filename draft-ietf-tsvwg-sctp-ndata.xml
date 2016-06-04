@@ -227,7 +227,6 @@ new I-DATA chunk allowing user messages interleaving.</t>
 addition of the new Message Identifier (MID) and
 Fragment Sequence Number (FSN) and the
 removal of the Stream Sequence Number (SSN).
-However, the lower 16-bit of the MID can be used as the SSN if necessary.
 The length of the I-DATA chunk header is 20 bytes, which is 4 bytes more than
 the length of the DATA chunk header defined in <xref target='RFC4960'/>.</t>
 
