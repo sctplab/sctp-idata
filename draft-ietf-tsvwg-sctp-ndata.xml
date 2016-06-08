@@ -7,17 +7,12 @@
 
 <rfc category="std"
      ipr="trust200902"
-     docName="draft-ietf-tsvwg-sctp-ndata-06.txt">
+     docName="draft-ietf-tsvwg-sctp-ndata-06-to-be.txt">
 <front>
 <title abbrev="Stream Schedulers and the I-DATA Chunk">
        Stream Schedulers and User Message Interleaving
        for the Stream Control Transmission Protocol
 </title>
-
-<!--
-Issues:
-* Deal with late assignment in Stream Reset.
--->
 
 <!-- *************** RANDALL STEWART *************** -->
 <author initials="R. R." surname="Stewart" fullname="Randall R. Stewart">
@@ -109,7 +104,8 @@ Number (TSN) for three different purposes:
 <list style="numbers">
 <t>As an identifier for DATA chunks to provide a reliable transfer.</t>
 <t>As an identifier for the sequence of fragments to allow reassembly.</t>
-<t>As a sequence number allowing to have up to 2**16 - 1 SSNs outstanding.</t>
+<t>As a sequence number allowing to have up to 2**16 - 1 Stream Sequence
+Numbers (SSNs) outstanding.</t>
 </list>
 The protocol requires all fragments of a user message to have consecutive
 TSNs. Therefore it is impossible for the sender to interleave different
@@ -231,7 +227,6 @@ new I-DATA chunk allowing user messages interleaving.</t>
 addition of the new Message Identifier (MID) and
 Fragment Sequence Number (FSN) and the
 removal of the Stream Sequence Number (SSN).
-However, the lower 16-bit of the MID can be used as the SSN if necessary.
 The length of the I-DATA chunk header is 20 bytes, which is 4 bytes more than
 the length of the DATA chunk header defined in <xref target='RFC4960'/>.</t>
 
@@ -381,7 +376,6 @@ correspondingly.</t>
 <t>Since most schedulers, especially all schedulers when supporting user
 message interleaving, require late TSN assignment, it should be noted that the
 implementation of <xref target='RFC6525'/> needs to handle this.</t>
-<!-- FIXME: Do we need to be more explicit here? -->
 </section>
 </section>
 </section>
@@ -441,8 +435,24 @@ WebRTC Datachannels as specified in
 described in this document.</t>
 <t>Please note that this section is informational only.</t>
 
-<!-- FIXME: This section not only has to define new API elements, but also
-     needs to discuss interactions with existing elements.-->
+<section title="Exposition of the Stream Sequence Number (SSN)">
+<t>The socket API defined in <xref target='RFC6458'/> defines several structures
+in which the SSN of a received user message is exposed to the application.
+The list of these structures includes:
+<list style="hanging">
+<t hangText="struct sctp_sndrcvinfo">
+<vspace blankLines="0"/>
+Specfied in Section 5.3.2 of <xref target='RFC6458'/> and being deprecated.</t>
+<t hangText="struct sctp_extrcvinfo">
+<vspace blankLines="0"/>
+Specfied in Section 5.3.3 of <xref target='RFC6458'/> and being deprecated.</t>
+<t hangText="struct sctp_rcvinfo">
+<vspace blankLines="0"/>
+Specfied in Section 5.3.5 of <xref target='RFC6458'/>.</t>
+</list>
+If user message interleaving is used, the lower order 16 bits of the MID are
+used as the SSN when filling out these structures.</t>
+</section>
 
 <section title="SCTP_ASSOC_CHANGE Notification">
 <t>When an SCTP_ASSOC_CHANGE notification is delivered indicating
@@ -469,8 +479,9 @@ of user message interleaving support for future associations.
 For existing associations it allows to query whether user message interleaving
 support was negotiated or not on a particular association.</t>
 <t>User message interleaving is disabled per default.</t>
-<t>This socket option uses IPPROTO_SCTP as its level and SCTP_INTERLEAVING_SUPPORTED
-as its name. It can be used with getsockopt() and setsockopt().
+<t>This socket option uses IPPROTO_SCTP as its level and
+SCTP_INTERLEAVING_SUPPORTED as its name.
+It can be used with getsockopt() and setsockopt().
 The socket option value uses the following structure
 defined in <xref target='RFC6458'/>:</t>
 <figure>
