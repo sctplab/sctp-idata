@@ -338,7 +338,6 @@ Future SCTP extensions MUST describe if and how they interfere with the
 usage of I-DATA chunks. For the SCTP extensions already defined when this
 document was published, the details are given in the following subsections.</t>
 <section title='SCTP Partial Reliability Extension'>
-<!-- FIXME: Do we need a new FORWARD-TSN chunk? -->
 <t>When the SCTP extension defined in <xref target='RFC3758'/> is used,
 the I-FORWARD-TSN chunk MUST be used instead of the FORWARD-TSN chunk.
 The only difference is that the 16-bit Stream Sequence Number (SSN)
@@ -388,32 +387,42 @@ message interleaving has been negotiated for the association or not.</t>
          title='First Come First Serve (SCTP_SS_FCFS)'>
 <t>The simple first-come, first-serve scheduler of user messages is used.
 It just passes through the messages in the order in which they have been
-delivered by the application. No modification of the order is done at all.</t>
+delivered by the application. No modification of the order is done at all.
+The usage of user message interleaving does not affect the sending of
+the chunks, except that I-DATA chunks are used instead of DATA chunks.</t>
 </section>
 <section anchor='sctp_ss_rr'
          title='Round Robin Scheduler (SCTP_SS_RR)'>
-<t>This scheduler provides a fair scheduling based on the number of user messages
-by cycling around non-empty stream queues.</t>
+<t>When not using user message interleaving, this scheduler provides a fair
+scheduling based on the number of user messages by cycling around non-empty
+stream queues. When using user message interleaving, this scheduler provides
+a fair scheduling based on the number of I-DATA chunks by cycling around
+non-empty stream queues.</t>
 </section>
 <section anchor='sctp_ss_rr_pkt'
          title='Round Robin Scheduler per Packet (SCTP_SS_RR_PKT)'>
-<t>This is a round-robin scheduler but bundles only user messages of the same
-stream in one packet. This minimizes head-of-line blocking when a packet
-is lost because only a single stream is affected.</t>
+<t>This is a round-robin scheduler but bundles only DATA or I-DATA chunks
+referring to the the same stream in a packet.
+This minimizes head-of-line blocking when a packet is lost because only a
+single stream is affected.</t>
 </section>
 <section anchor='sctp_ss_prio'
          title='Priority Based Scheduler (SCTP_SS_PRIO)'>
 <t>Scheduling of user messages with strict priorities is used.
 The priority is configurable per outgoing SCTP stream. Streams having a higher
 priority will be scheduled first and when multiple streams have the same
-priority, the scheduling between them is implementation specific.</t>
+priority, the scheduling between them is implementation specific.
+When using user message interleaving, the sending of lower priority user
+messages will not block the sending of higher priority user messages.</t>
 </section>
 <section anchor='sctp_ss_fb'
          title='Fair Bandwidth Scheduler (SCTP_SS_FB)'>
 <t>A fair bandwidth distribution between the streams is used.
 This scheduler considers the lengths of the messages of each stream and
 schedules them in a certain way to maintain an equal bandwidth for all
-streams. The details are implementation specific.</t>
+streams. The details are implementation specific.
+Using user message interleaving allows for a better realisation of the
+fair bandwidth usage.</t>
 </section>
 <section anchor='sctp_ss_wfq'
          title='Weighted Fair Queueing Scheduler (SCTP_SS_WFQ)'>
@@ -421,7 +430,9 @@ streams. The details are implementation specific.</t>
 configurable per outgoing SCTP stream.
 This scheduler considers the lengths of the messages of each stream and
 schedules them in a certain way to use the bandwidth according to the given
-weights. The details are implementation specific.</t>
+weights. The details are implementation specific.
+Using user message interleaving allows for a better realisation of the
+bandwidth usage according to the given weights.</t>
 <t>This scheduler in combination with user message interleaving is used for
 WebRTC Datachannels as specified in
 <xref target='I-D.ietf-rtcweb-data-channel'/>.</t>
