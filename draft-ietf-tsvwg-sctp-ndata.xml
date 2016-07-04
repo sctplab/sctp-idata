@@ -7,7 +7,7 @@
 
 <rfc category="std"
      ipr="trust200902"
-     docName="draft-ietf-tsvwg-sctp-ndata-06-to-be.txt">
+     docName="draft-ietf-tsvwg-sctp-ndata-06.txt">
 <front>
 <title abbrev="Stream Schedulers and the I-DATA Chunk">
        Stream Schedulers and User Message Interleaving
@@ -453,7 +453,7 @@ messages will not block the sending of higher priority user messages.</t>
 This scheduler considers the lengths of the messages of each stream and
 schedules them in a certain way to maintain an equal bandwidth for all
 streams. The details are implementation specific.
-Using user message interleaving allows for a better realisation of the
+Using user message interleaving allows for a better realization of the
 fair bandwidth usage.</t>
 </section>
 <section anchor='sctp_ss_wfq'
@@ -463,7 +463,7 @@ configurable per outgoing SCTP stream.
 This scheduler considers the lengths of the messages of each stream and
 schedules them in a certain way to use the bandwidth according to the given
 weights. The details are implementation specific.
-Using user message interleaving allows for a better realisation of the
+Using user message interleaving allows for a better realization of the
 bandwidth usage according to the given weights.</t>
 <t>This scheduler in combination with user message interleaving is used for
 WebRTC Datachannels as specified in
@@ -588,8 +588,7 @@ used. This parameter is ignored for one-to-one style sockets.</t>
 This specifies which scheduler is used. The following constants can be used:
 <!--The values defined in this
 document are given in <xref target="schedulertable"/>.-->
-<!-- FIXME: Which one have to be implemented?
-            Which ones work also if I-DATA hasn't been negotiated. -->
+<!-- FIXME: Which one have to be implemented? -->
 <list style='hanging'>
 <t hangText="SCTP_SS_DEFAULT:">
 The default scheduler used by the SCTP implementation. Typical values are
