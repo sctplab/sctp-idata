@@ -387,14 +387,14 @@ It MUST be set to 0 by the sender and MUST be ignored by the receiver.</t>
 <vspace blankLines="0"/>
 This ordered user messages, this field corresponds to the SSN field in the
 FORWARD-TSN chunk. It is just a 32-bit number instead of a 16-bit number.
-<!-- FIXME: Is the following clear enough? --!>
+<!-- FIXME: Is the following clear enough? -->
 In case of abandoned unordered messages, the handling corresponds to
 the handling for ordered messages, since when using I-DATA chunks, they can
 also be identified by the MID.</t>
 </list></t>
 <t>The FORWARD-TSN chunk MUST be used in combination with the DATA chunk and
 MUST NOT be used in combination with the I-DATA chunk.
-The I-FORWARD-TSN chunk MUST  be used in combination with the I-DATA chunk and
+The I-FORWARD-TSN chunk MUST be used in combination with the I-DATA chunk and
 MUST NOT be used in combination with the DATA chunk.</t>
 <t>Support for the I-FORWARD-TSN chunk is negotiated during the SCTP association
 setup via the the Supported Extensions Parameter as defined in
