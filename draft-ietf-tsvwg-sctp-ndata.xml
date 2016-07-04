@@ -397,7 +397,7 @@ MUST NOT be used in combination with the I-DATA chunk.
 The I-FORWARD-TSN chunk MUST be used in combination with the I-DATA chunk and
 MUST NOT be used in combination with the DATA chunk.</t>
 <t>Support for the I-FORWARD-TSN chunk is negotiated during the SCTP association
-setup via the the Supported Extensions Parameter as defined in
+setup via the Supported Extensions Parameter as defined in
 <xref target='RFC5061'/>. Only if both end points support the I-DATA chunk
 and the I-FORWARD-TSN chunk, the partial reliability extension can be used in
 combination with user message interleaving.</t>
@@ -438,7 +438,7 @@ non-empty stream queues.</t>
 <section anchor='sctp_ss_rr_pkt'
          title='Round Robin Scheduler per Packet (SCTP_SS_RR_PKT)'>
 <t>This is a round-robin scheduler but bundles only DATA or I-DATA chunks
-referring to the the same stream in a packet.
+referring to the same stream in a packet.
 This minimizes head-of-line blocking when a packet is lost because only a
 single stream is affected.</t>
 </section>
