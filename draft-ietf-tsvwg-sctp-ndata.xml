@@ -550,7 +550,9 @@ a value of 0 encodes the disabling of user message interleaving.</t>
 <t>An application using user message interleaving should also set the fragment
 interleave level to 2 by using the SCTP_FRAGMENT_INTERLEAVE socket option
 specified in Section 8.1.20 of <xref target='RFC6458'/>.
-This allows the reception from multiple streams simultaneously.
+This allows the interleaving of user messages from different streams.
+Please note that it does not allow the interleaving of ordered and unordered
+user messages on the same stream.
 Failure to set this option can possibly lead to application deadlock.
 Some implementations might therefore put some restrictions on setting
 combinations of these values.</t>
