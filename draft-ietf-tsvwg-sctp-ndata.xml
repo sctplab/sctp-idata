@@ -145,8 +145,8 @@ Number (SSN) and properties of the current SCTP Data chunk but also adds two
 new fields in its chunk header, the Fragment Sequence Number (FSN) and the
 Message Identifier (MID).
 Then the FSN is only used for reassembling all fragments having the same MID
-and ordering property. The TSN is only for the reliable transfer in combination
-with SACK chunks.</t>
+and ordering property. The TSN is used only for the reliable transfer in
+combination with SACK chunks.</t>
 <t>The MID is also used for ensuring ordered delivery, therefore replacing the
 stream sequence number.
 Therefore, the head of line blocking caused by the original design is
@@ -230,7 +230,8 @@ removal of the Stream Sequence Number (SSN).
 The length of the I-DATA chunk header is 20 bytes, which is 4 bytes more than
 the length of the DATA chunk header defined in <xref target='RFC4960'/>.</t>
 
-<t><list style="hanging">
+<t>The new fields are:
+<list style="hanging">
 <t hangText="Reserved: 16 bits (unsigned integer)">
 <vspace blankLines="0"/>
 This field is reserved.
@@ -257,6 +258,10 @@ Please note that the MID is in "network byte order", a.k.a. Big Endian.</t>
 <t hangText="Payload Protocol Identifier (PPID) / Fragment Sequence Number (FSN): 32 bits (unsigned integer)">
 <vspace blankLines="0"/>
 If the B bit is set, this field contains the PPID of the user message.
+Note that in this case, this field is NOT touched by an SCTP implementation;
+therefore, its byte order is not necessarily in network byte order.
+The upper layer is responsible for any byte order conversions to this field,
+similar to the PPID of DATA chunks.
 In this case the FSN is implicitly considered to be 0.
 If the B bit is not set, this field contains the FSN.
 The FSN is used to enumerate all fragments of a single user message, starting
@@ -337,11 +342,15 @@ both bits set.</t>
 Future SCTP extensions MUST describe if and how they interfere with the
 usage of I-DATA chunks. For the SCTP extensions already defined when this
 document was published, the details are given in the following subsections.</t>
+
 <section title='SCTP Partial Reliability Extension'>
-<t>When the SCTP extension defined in <xref target='RFC3758'/> is used,
-the I-FORWARD-TSN chunk MUST be used instead of the FORWARD-TSN chunk.
-The only difference is that the 16-bit Stream Sequence Number (SSN)
-has been replaced by the 32-bit Message Identifier (MID).</t>
+<t>When the SCTP extension defined in <xref target='RFC3758'/> is used
+in combination with the user message interleaving extension, the new
+I-FORWARD-TSN chunk MUST be used instead of the FORWARD-TSN chunk.
+The difference between the FORWARD-TSN and the I-FORWARD-TSN chunk is that
+the 16-bit Stream Sequence Number (SSN) has been replaced by the 32-bit Message
+Identifier (MID). To keep the memory aligned, a 16-bit reserved field has also
+been added.</t>
 <figure title='I-FORWARD-TSN chunk format'
         anchor='i_forward_tsn_chunk'>
 <artwork>
@@ -352,21 +361,44 @@ has been replaced by the 32-bit Message Identifier (MID).</t>
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                       New Cumulative TSN                      |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|             Stream 1          |           Reserved            |
+|      Stream Identifier 1      |           Reserved            |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                      Message Identifier 1                     |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 \                                                               \
 /                                                               /
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|             Stream N          |           Reserved            |
+|      Stream Identifier N      |           Reserved            |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                      Message Identifier N                     |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 </artwork>
 </figure>
-
+<t><list style="hanging">
+<t hangText="Reserved: 16 bits (unsigned integer)">
+<vspace blankLines="0"/>
+This field is reserved.
+It MUST be set to 0 by the sender and MUST be ignored by the receiver.</t>
+<t hangText="Message Identifier (MID): 32 bits (unsigned integer)">
+<vspace blankLines="0"/>
+This ordered user messages, this field corresponds to the SSN field in the
+FORWARD-TSN chunk. It is just a 32-bit number instead of a 16-bit number.
+<!-- FIXME: Is the following clear enough? --!>
+In case of abandoned unordered messages, the handling corresponds to
+the handling for ordered messages, since when using I-DATA chunks, they can
+also be identified by the MID.</t>
+</list></t>
+<t>The FORWARD-TSN chunk MUST be used in combination with the DATA chunk and
+MUST NOT be used in combination with the I-DATA chunk.
+The I-FORWARD-TSN chunk MUST  be used in combination with the I-DATA chunk and
+MUST NOT be used in combination with the DATA chunk.</t>
+<t>Support for the I-FORWARD-TSN chunk is negotiated during the SCTP association
+setup via the the Supported Extensions Parameter as defined in
+<xref target='RFC5061'/>. Only if both end points support the I-DATA chunk
+and the I-FORWARD-TSN chunk, the partial reliability extension can be used in
+combination with user message interleaving.</t>
 </section>
+
 <section title='SCTP Stream Reconfiguration Extension'>
 <t>When an association resets the SSN using the SCTP extension defined in
 <xref target='RFC6525'/>, the two counters (one for the ordered messages,
@@ -453,13 +485,13 @@ The list of these structures includes:
 <list style="hanging">
 <t hangText="struct sctp_sndrcvinfo">
 <vspace blankLines="0"/>
-Specfied in Section 5.3.2 of <xref target='RFC6458'/> and being deprecated.</t>
+Specified in Section 5.3.2 of <xref target='RFC6458'/> and being deprecated.</t>
 <t hangText="struct sctp_extrcvinfo">
 <vspace blankLines="0"/>
-Specfied in Section 5.3.3 of <xref target='RFC6458'/> and being deprecated.</t>
+Specified in Section 5.3.3 of <xref target='RFC6458'/> and being deprecated.</t>
 <t hangText="struct sctp_rcvinfo">
 <vspace blankLines="0"/>
-Specfied in Section 5.3.5 of <xref target='RFC6458'/>.</t>
+Specified in Section 5.3.5 of <xref target='RFC6458'/>.</t>
 </list>
 If user message interleaving is used, the lower order 16 bits of the MID are
 used as the SSN when filling out these structures.</t>
