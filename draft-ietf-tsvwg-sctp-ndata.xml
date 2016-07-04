@@ -316,14 +316,10 @@ This way messages from other streams may be interleaved with the
 fragmented message. Please note that this is the only form of interleaving
 support. For example, it is not possible to interleave multiple ordered
 or unordered user messages from the same stream.</t>
-<t>The sender MUST NOT be fragmenting more than one ordered message
-in any given stream at any time.
-The sender MUST NOT be fragmenting more than one unordered
-user message in any given stream at any time.
-The sender MAY fragment one ordered and one unordered user message
-within a single stream.
-At any time a sender MAY fragment an ordered and an unordered
-user message each of them on different streams.</t>
+<t>The sender MUST NOT be fragmenting more than one user message in any given
+stream at any time.
+At any time, a sender MAY fragment multiple user message, each of them on
+different streams.</t>
 <t>The sender MUST assign TSN's in a way that the receiver can make progress.
 One way to achieve this is to assign the later fragments of a user message
 a higher TSN and send out the TSNs in sequence.</t>
