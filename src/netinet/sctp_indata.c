@@ -1042,6 +1042,7 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc, s
 					      control, control->on_strm_q);
 				}
 #endif
+				SCTP_STAT_INCR_COUNTER64(sctps_reasmusrmsgs);
 				TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
 				control->on_strm_q = 0;
 			}
