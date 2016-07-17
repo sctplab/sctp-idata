@@ -11025,7 +11025,6 @@ sctp_fill_in_rest:
 				strseq++;
 			} else {
 				strseq_m->stream = ntohs(at->rec.data.stream_number);
-				strseq_m->reserved = ntohs(0);
 				strseq_m->msg_id = ntohl(at->rec.data.stream_seq);
 				if (at->rec.data.rcv_flags & SCTP_DATA_UNORDERED)
 					strseq_m->flags = ntohs(PR_SCTP_UNORDERED_FLAG);
