@@ -7,7 +7,7 @@
 
 <rfc category="std"
      ipr="trust200902"
-     docName="draft-ietf-tsvwg-sctp-ndata-06.txt">
+     docName="draft-ietf-tsvwg-sctp-ndata-07-to-be.txt">
 <front>
 <title abbrev="Stream Schedulers and the I-DATA Chunk">
        Stream Schedulers and User Message Interleaving
@@ -361,14 +361,14 @@ been added.</t>
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                       New Cumulative TSN                      |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|      Stream Identifier 1      |           Reserved            |
+|      Stream Identifier 1      |          Reserved           |U|
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                      Message Identifier 1                     |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 \                                                               \
 /                                                               /
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|      Stream Identifier N      |           Reserved            |
+|      Stream Identifier N      |          Reserved           |U|
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                      Message Identifier N                     |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
