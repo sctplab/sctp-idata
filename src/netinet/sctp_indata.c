@@ -838,6 +838,7 @@ restart:
 				if (control->on_strm_q) {
 					TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
 					control->on_strm_q = 0;
+					SCTP_STAT_INCR_COUNTER64(sctps_reasmusrmsgs);
 				}
 				if (control->on_read_q == 0) {
 					sctp_add_to_readq(stcb->sctp_ep, stcb, control,
@@ -1094,6 +1095,7 @@ done_un:
 					      control, control->on_strm_q);
 				}
 #endif
+				SCTP_STAT_INCR_COUNTER64(sctps_reasmusrmsgs);
 				TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
 				control->on_strm_q = 0;
 			}
@@ -1136,6 +1138,7 @@ deliver_more:
 						      control, control->on_strm_q);
 					}
 #endif
+					SCTP_STAT_INCR_COUNTER64(sctps_reasmusrmsgs);
 					TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
 					control->on_strm_q = 0;
 				}
