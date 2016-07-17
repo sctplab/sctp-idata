@@ -350,6 +350,7 @@ extern void getwintimeofday(struct timeval *tv);
 #define SCTP_RTT_FROM_NON_DATA 0
 #define SCTP_RTT_FROM_DATA     1
 
+#define PR_SCTP_UNORDERED_FLAG 0x0001
 
 /* IP hdr (20/40) + 12+2+2 (enet) + sctp common 12 */
 #define SCTP_FIRST_MBUF_RESV 68
