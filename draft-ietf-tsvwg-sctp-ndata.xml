@@ -566,7 +566,6 @@ user messages on the same stream.
 Failure to set this option can possibly lead to application deadlock.
 Some implementations might therefore put some restrictions on setting
 combinations of these values.</t>
-<!-- FIXME: Interaction with EEOR-Mode needs to be handled. -->
 </section>
 
 <section title="Get or Set the Stream Scheduler (SCTP_STREAM_SCHEDULER)">
@@ -658,6 +657,11 @@ The meaning of this field depends on the scheduler specified. It is
 ignored when the scheduler does not need additional information.</t>
 </list></t>
 </section>
+</section>
+<section title="Explicit EOR Marking">
+<t>Using explicit EOR marking for an SCTP association supporting user message
+interleaving allows the user to interleave the sending of user messages on
+different streams.</t>
 </section>
 </section>
 
