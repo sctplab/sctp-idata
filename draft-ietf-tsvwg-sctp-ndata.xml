@@ -423,7 +423,8 @@ implementation of <xref target='RFC6525'/> needs to handle this.</t>
 <section title="Stream Schedulers">
 <t>This section defines several stream schedulers.
 The streams schedulers may behave differently depending on whether user
-message interleaving has been negotiated for the association or not.</t>
+message interleaving has been negotiated for the association or not.
+The set of schedulers being implemented is implementation dependent.</t>
 <section anchor='sctp_ss_fcfs'
          title='First Come First Serve (SCTP_SS_FCFS)'>
 <t>The simple first-come, first-serve scheduler of user messages is used.
@@ -595,9 +596,6 @@ used. This parameter is ignored for one-to-one style sockets.</t>
 
 <t hangText="assoc_value:">
 This specifies which scheduler is used. The following constants can be used:
-<!--The values defined in this
-document are given in <xref target="schedulertable"/>.-->
-<!-- FIXME: Which one have to be implemented? -->
 <list style='hanging'>
 <t hangText="SCTP_SS_DEFAULT:">
 The default scheduler used by the SCTP implementation. Typical values are
