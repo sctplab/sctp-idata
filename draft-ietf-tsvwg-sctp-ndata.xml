@@ -349,8 +349,11 @@ in combination with the user message interleaving extension, the new
 I-FORWARD-TSN chunk MUST be used instead of the FORWARD-TSN chunk.
 The difference between the FORWARD-TSN and the I-FORWARD-TSN chunk is that
 the 16-bit Stream Sequence Number (SSN) has been replaced by the 32-bit Message
-Identifier (MID). To keep the memory aligned, a 16-bit reserved field has also
-been added.</t>
+Identifier (MID) and the largest skipped MID can also be provided for
+unordered messages.
+Therefore the principle applied to ordered message when using FORWARD-TSN
+chunks is applied to ordered and unordered messages when using I-FORWARD-TSN
+chunks.</t>
 <figure title='I-FORWARD-TSN chunk format'
         anchor='i_forward_tsn_chunk'>
 <artwork>
@@ -361,32 +364,38 @@ been added.</t>
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                       New Cumulative TSN                      |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|      Stream Identifier 1      |          Reserved           |U|
+|       Stream Identifier       |          Reserved           |U|
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                      Message Identifier 1                     |
+|                       Message Identifier                      |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 \                                                               \
 /                                                               /
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|      Stream Identifier N      |          Reserved           |U|
+|       Stream Identifier       |          Reserved           |U|
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                      Message Identifier N                     |
+|                       Message Identifier                      |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 </artwork>
 </figure>
-<t><list style="hanging">
-<t hangText="Reserved: 16 bits (unsigned integer)">
+<t>The relevant new fields are:
+<list style="hanging">
+<t hangText="Stream Identifier (SID): 16-bits (unsigned integer)">
+<vspace blankLines="0"/>
+This field holds the stream number this entry refers to.</t>
+<t hangText="Reserved: 15 bits">
 <vspace blankLines="0"/>
 This field is reserved.
 It MUST be set to 0 by the sender and MUST be ignored by the receiver.</t>
+<t hangText="U bit: 1 bit">
+<vspace blankLines="0"/>
+The U bit specifies if the Message Identifier of this entry refers
+unordered messages (U bit is set) or ordered messages (U bit is not set).</t>
 <t hangText="Message Identifier (MID): 32 bits (unsigned integer)">
 <vspace blankLines="0"/>
-This ordered user messages, this field corresponds to the SSN field in the
-FORWARD-TSN chunk. It is just a 32-bit number instead of a 16-bit number.
-<!-- FIXME: Is the following clear enough? -->
-In case of abandoned unordered messages, the handling corresponds to
-the handling for ordered messages, since when using I-DATA chunks, they can
-also be identified by the MID.</t>
+This field holds the largest Message Identifier for ordered or unordered
+messages indicated by the U-bit that was skipped for the stream specified
+by the Stream Identifier. For ordered messages this is similar to the
+FORWARD-TSN chunk, just replacing the 16-bit SSN by the 32-bit MID.</t>
 </list></t>
 <t>The FORWARD-TSN chunk MUST be used in combination with the DATA chunk and
 MUST NOT be used in combination with the I-DATA chunk.
