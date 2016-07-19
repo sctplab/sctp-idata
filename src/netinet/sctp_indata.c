@@ -4141,27 +4141,8 @@ again:
 		if ((asoc->stream_queue_cnt == 1) &&
 		    ((asoc->state & SCTP_STATE_SHUTDOWN_PENDING) ||
 		     (asoc->state & SCTP_STATE_SHUTDOWN_RECEIVED)) &&
-		    (asoc->locked_on_sending)
-			) {
-			struct sctp_stream_queue_pending *sp;
-			/* I may be in a state where we got
-			 * all across.. but cannot write more due
-			 * to a shutdown... we abort since the
-			 * user did not indicate EOR in this case. The
-			 * sp will be cleaned during free of the asoc.
-			 */
-			sp = TAILQ_LAST(&((asoc->locked_on_sending)->outqueue),
-					sctp_streamhead);
-			if ((sp) && (sp->length == 0)) {
-				/* Let cleanup code purge it */
-				if (sp->msg_is_complete) {
-					asoc->stream_queue_cnt--;
-				} else {
-					asoc->state |= SCTP_STATE_PARTIAL_MSG_LEFT;
-					asoc->locked_on_sending = NULL;
-					asoc->stream_queue_cnt--;
-				}
-			}
+		    ((*asoc->ss_functions.sctp_ss_is_user_msgs_incomplete)(stcb, asoc))) {
+			asoc->state |= SCTP_STATE_PARTIAL_MSG_LEFT;
 		}
 		if ((asoc->state & SCTP_STATE_SHUTDOWN_PENDING) &&
 		    (asoc->stream_queue_cnt == 0)) {
@@ -4884,25 +4865,8 @@ sctp_handle_sack(struct mbuf *m, int offset_seg, int offset_dup,
 		if ((asoc->stream_queue_cnt == 1) &&
 		    ((asoc->state & SCTP_STATE_SHUTDOWN_PENDING) ||
 		     (asoc->state & SCTP_STATE_SHUTDOWN_RECEIVED)) &&
-		    (asoc->locked_on_sending)
-			) {
-			struct sctp_stream_queue_pending *sp;
-			/* I may be in a state where we got
-			 * all across.. but cannot write more due
-			 * to a shutdown... we abort since the
-			 * user did not indicate EOR in this case.
-			 */
-			sp = TAILQ_LAST(&((asoc->locked_on_sending)->outqueue),
-			                sctp_streamhead);
-			if ((sp) && (sp->length == 0)) {
-				asoc->locked_on_sending = NULL;
-				if (sp->msg_is_complete) {
-					asoc->stream_queue_cnt--;
-				} else {
-					asoc->state |= SCTP_STATE_PARTIAL_MSG_LEFT;
-					asoc->stream_queue_cnt--;
-				}
-			}
+		    ((*asoc->ss_functions.sctp_ss_is_user_msgs_incomplete)(stcb, asoc))) {
+			asoc->state |= SCTP_STATE_PARTIAL_MSG_LEFT;
 		}
 		if ((asoc->state & SCTP_STATE_SHUTDOWN_PENDING) &&
 		    (asoc->stream_queue_cnt == 0)) {
