@@ -349,8 +349,11 @@ in combination with the user message interleaving extension, the new
 I-FORWARD-TSN chunk MUST be used instead of the FORWARD-TSN chunk.
 The difference between the FORWARD-TSN and the I-FORWARD-TSN chunk is that
 the 16-bit Stream Sequence Number (SSN) has been replaced by the 32-bit Message
-Identifier (MID). To keep the memory aligned, a 16-bit reserved field has also
-been added.</t>
+Identifier (MID) and the largest skipped MID can also be provided for
+unordered messages.
+Therefore the principle applied to ordered message when using FORWARD-TSN
+chunks is applied to ordered and unordered messages when using I-FORWARD-TSN
+chunks.</t>
 <figure title='I-FORWARD-TSN chunk format'
         anchor='i_forward_tsn_chunk'>
 <artwork>
@@ -361,32 +364,38 @@ been added.</t>
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                       New Cumulative TSN                      |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|      Stream Identifier 1      |          Reserved           |U|
+|       Stream Identifier       |          Reserved           |U|
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                      Message Identifier 1                     |
+|                       Message Identifier                      |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 \                                                               \
 /                                                               /
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|      Stream Identifier N      |          Reserved           |U|
+|       Stream Identifier       |          Reserved           |U|
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                      Message Identifier N                     |
+|                       Message Identifier                      |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 </artwork>
 </figure>
-<t><list style="hanging">
-<t hangText="Reserved: 16 bits (unsigned integer)">
+<t>The relevant new fields are:
+<list style="hanging">
+<t hangText="Stream Identifier (SID): 16-bits (unsigned integer)">
+<vspace blankLines="0"/>
+This field holds the stream number this entry refers to.</t>
+<t hangText="Reserved: 15 bits">
 <vspace blankLines="0"/>
 This field is reserved.
 It MUST be set to 0 by the sender and MUST be ignored by the receiver.</t>
+<t hangText="U bit: 1 bit">
+<vspace blankLines="0"/>
+The U bit specifies if the Message Identifier of this entry refers
+unordered messages (U bit is set) or ordered messages (U bit is not set).</t>
 <t hangText="Message Identifier (MID): 32 bits (unsigned integer)">
 <vspace blankLines="0"/>
-This ordered user messages, this field corresponds to the SSN field in the
-FORWARD-TSN chunk. It is just a 32-bit number instead of a 16-bit number.
-<!-- FIXME: Is the following clear enough? -->
-In case of abandoned unordered messages, the handling corresponds to
-the handling for ordered messages, since when using I-DATA chunks, they can
-also be identified by the MID.</t>
+This field holds the largest Message Identifier for ordered or unordered
+messages indicated by the U-bit that was skipped for the stream specified
+by the Stream Identifier. For ordered messages this is similar to the
+FORWARD-TSN chunk, just replacing the 16-bit SSN by the 32-bit MID.</t>
 </list></t>
 <t>The FORWARD-TSN chunk MUST be used in combination with the DATA chunk and
 MUST NOT be used in combination with the I-DATA chunk.
@@ -414,7 +423,8 @@ implementation of <xref target='RFC6525'/> needs to handle this.</t>
 <section title="Stream Schedulers">
 <t>This section defines several stream schedulers.
 The streams schedulers may behave differently depending on whether user
-message interleaving has been negotiated for the association or not.</t>
+message interleaving has been negotiated for the association or not.
+The set of schedulers being implemented is implementation dependent.</t>
 <section anchor='sctp_ss_fcfs'
          title='First Come First Serve (SCTP_SS_FCFS)'>
 <t>The simple first-come, first-serve scheduler of user messages is used.
@@ -556,10 +566,6 @@ user messages on the same stream.
 Failure to set this option can possibly lead to application deadlock.
 Some implementations might therefore put some restrictions on setting
 combinations of these values.</t>
-<!-- FIXME: Same socket option on the sender side? What about specifying stream
-     schedulers in this document. Interleaving with FCFS doesn't make much
-     sense... -->
-<!-- FIXME: Interaction with EEOR-Mode needs to be handled. -->
 </section>
 
 <section title="Get or Set the Stream Scheduler (SCTP_STREAM_SCHEDULER)">
@@ -586,9 +592,6 @@ used. This parameter is ignored for one-to-one style sockets.</t>
 
 <t hangText="assoc_value:">
 This specifies which scheduler is used. The following constants can be used:
-<!--The values defined in this
-document are given in <xref target="schedulertable"/>.-->
-<!-- FIXME: Which one have to be implemented? -->
 <list style='hanging'>
 <t hangText="SCTP_SS_DEFAULT:">
 The default scheduler used by the SCTP implementation. Typical values are
@@ -654,6 +657,11 @@ The meaning of this field depends on the scheduler specified. It is
 ignored when the scheduler does not need additional information.</t>
 </list></t>
 </section>
+</section>
+<section title="Explicit EOR Marking">
+<t>Using explicit EOR marking for an SCTP association supporting user message
+interleaving allows the user to interleave the sending of user messages on
+different streams.</t>
 </section>
 </section>
 
