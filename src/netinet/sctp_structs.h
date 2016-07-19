@@ -646,7 +646,7 @@ struct scheduling_data {
 	union {
 		struct sctpwheel_listhead wheel;
 		struct sctplist_listhead list;
-	}out;
+	} out;
 };
 
 /*
@@ -800,7 +800,7 @@ struct sctp_ss_functions {
 		int holds_lock);
 	void (*sctp_ss_clear)(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		int clear_values, int holds_lock);
-	void (*sctp_ss_init_stream)(struct sctp_stream_out *strq, struct sctp_stream_out *with_strq);
+	void (*sctp_ss_init_stream)(struct sctp_tcb *stcb, struct sctp_stream_out *strq, struct sctp_stream_out *with_strq);
 	void (*sctp_ss_add_to_stream)(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		struct sctp_stream_out *strq, struct sctp_stream_queue_pending *sp, int holds_lock);
 	int (*sctp_ss_is_empty)(struct sctp_tcb *stcb, struct sctp_association *asoc);
