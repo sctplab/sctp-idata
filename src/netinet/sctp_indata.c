@@ -996,7 +996,8 @@ place_chunk:
 }
 
 static int
-sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc, struct sctp_stream_in *strm)
+sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc,
+                         struct sctp_stream_in *strm, int inp_read_lock_held)
 {
 	/*
 	 * Given a stream, strm, see if any of
@@ -1050,7 +1051,7 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc, s
 				sctp_add_to_readq(stcb->sctp_ep, stcb,
 						  control,
 						  &stcb->sctp_socket->so_rcv, control->end_added,
-						  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
+						  inp_read_lock_held, SCTP_SO_NOT_LOCKED);
 			}
 		} else {
 			/* Can we do a PD-API for this un-ordered guy? */
@@ -1060,7 +1061,7 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc, s
 				sctp_add_to_readq(stcb->sctp_ep, stcb,
 						  control,
 						  &stcb->sctp_socket->so_rcv, control->end_added,
-						  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
+						  inp_read_lock_held, SCTP_SO_NOT_LOCKED);
 
 				break;
 			}
@@ -1108,7 +1109,7 @@ done_un:
 				sctp_add_to_readq(stcb->sctp_ep, stcb,
 						  control,
 						  &stcb->sctp_socket->so_rcv, control->end_added,
-						  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
+						  inp_read_lock_held, SCTP_SO_NOT_LOCKED);
 			}
 			control = nctl;
 		}
@@ -1160,7 +1161,7 @@ deliver_more:
 				sctp_add_to_readq(stcb->sctp_ep, stcb,
 						  control,
 						  &stcb->sctp_socket->so_rcv, control->end_added,
-						  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
+						  inp_read_lock_held, SCTP_SO_NOT_LOCKED);
 			}
 			strm->last_sequence_delivered = next_to_del;
 			if (done) {
@@ -2164,13 +2165,13 @@ finish_express_del:
 		 * Now service re-assembly to pick up anything that has been
 		 * held on reassembly queue?
 		 */
-		(void)sctp_deliver_reasm_check(stcb, asoc, strm);
+		(void)sctp_deliver_reasm_check(stcb, asoc, strm, SCTP_READ_LOCK_NOT_HELD);
 		need_reasm_check = 0;
 	}
 
 	if (need_reasm_check) {
 		/* Another one waits ? */
-		(void)sctp_deliver_reasm_check(stcb, asoc, strm);
+		(void)sctp_deliver_reasm_check(stcb, asoc, strm, SCTP_READ_LOCK_NOT_HELD);
 	}
 	return (1);
 }
@@ -5187,7 +5188,7 @@ sctp_kick_prsctp_reorder_queue(struct sctp_tcb *stcb,
 	}
 	if (need_reasm_check) {
 		int ret;
-		ret = sctp_deliver_reasm_check(stcb, &stcb->asoc, strmin);
+		ret = sctp_deliver_reasm_check(stcb, &stcb->asoc, strmin, SCTP_READ_LOCK_HELD);
 		if (SCTP_MSGID_GT(old, tt, strmin->last_sequence_delivered)) {
 			/* Restore the next to deliver unless we are ahead */
 			strmin->last_sequence_delivered = tt;
@@ -5248,7 +5249,7 @@ sctp_kick_prsctp_reorder_queue(struct sctp_tcb *stcb,
 		}
 	}
 	if (need_reasm_check) {
-		(void)sctp_deliver_reasm_check(stcb, &stcb->asoc, strmin);
+		(void)sctp_deliver_reasm_check(stcb, &stcb->asoc, strmin, SCTP_READ_LOCK_HELD);
 	}
 }
 
