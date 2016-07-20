@@ -5287,6 +5287,7 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 		sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
 	}
 	TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
+	control->on_strm_q = 0;
 	if (control->on_read_q == 0) {
 		sctp_free_remote_addr(control->whoFrom);
 		if (control->data) {
