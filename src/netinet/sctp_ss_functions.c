@@ -234,9 +234,7 @@ sctp_ss_default_scheduled(struct sctp_tcb *stcb, struct sctp_nets *net SCTP_UNUS
 	asoc->ss_data.last_out_stream = strq;
 	if (stcb->asoc.idata_supported == 0) {
 		sp = TAILQ_FIRST(&strq->outqueue);
-		if ((moved_how_much > 0) &&
-		    (sp != NULL) &&
-		    ((sp->discard_rest == 1) || (sp->length == 0))) {
+		if ((sp != NULL) && (sp->some_taken == 1)) {
 			stcb->asoc.ss_data.locked_on_sending = strq;
 		} else {
 			stcb->asoc.ss_data.locked_on_sending = NULL;
@@ -707,9 +705,7 @@ sctp_ss_fb_scheduled(struct sctp_tcb *stcb, struct sctp_nets *net SCTP_UNUSED,
 
 	if (stcb->asoc.idata_supported == 0) {
 		sp = TAILQ_FIRST(&strq->outqueue);
-		if ((moved_how_much > 0) &&
-		    (sp != NULL) &&
-		    ((sp->discard_rest == 1) || (sp->length == 0))) {
+		if ((sp != NULL) && (sp->some_taken == 1)) {
 			stcb->asoc.ss_data.locked_on_sending = strq;
 		} else {
 			stcb->asoc.ss_data.locked_on_sending = NULL;
