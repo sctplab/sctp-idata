@@ -5277,15 +5277,20 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 	control = find_reasm_entry(strm, (uint32_t)seq, ordered, old);
 	if (control == NULL) {
 		/* Not found */
+		printf("cannot find strm:%d seq:%d ordered:%d old:%d\n", strm, seq, ordered, old);
 		return;
 	}
 	TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, nchk) {
 		/* Purge hanging chunks */
 		if (old && (ordered == 0)) {
+			printf("Check if TSN:0x%x > cumtsn:0x%x\n",
+			       chk->rec.data.TSN_seq, cumtsn);
 			if (SCTP_TSN_GT(chk->rec.data.TSN_seq, cumtsn)) {
+				printf("Stopping\n");
 				break;
 			}
 		}
+		printf("Removing chunk %p tsn:0x%x\n", chk, chk->rec.data.TSN_seq);
 		TAILQ_REMOVE(&control->reasm, chk, sctp_next);
 		asoc->size_on_reasm_queue -= chk->send_size;
 		sctp_ucount_decr(asoc->cnt_on_reasm_queue);
@@ -5407,8 +5412,10 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 	if (asoc->idata_supported == 0) {
 		uint16_t sid;
 		/* Flush all the un-ordered data based on cum-tsn */
-		for (sid = 0 ; sid < asoc->streamincnt; sid++) 
+		for (sid = 0 ; sid < asoc->streamincnt; sid++) {
+			printf("sid:%d forward unordered tsn to new-cum-ack:0x%x\n", new_cum_tsn);
 			sctp_flush_reassm_for_str_seq(stcb, asoc, sid, 0, 0, 1, new_cum_tsn);
+		}
 	}
 	/*******************************************************/
 	/* 3. Update the PR-stream re-ordering queues and fix  */
