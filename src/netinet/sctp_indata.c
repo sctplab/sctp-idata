@@ -855,7 +855,9 @@ restart:
 					control = nc;
 					goto restart;
 				} else {
-					sctp_free_a_readq(stcb, nc);
+					if (nc->on_strm_q == 0) {
+						sctp_free_a_readq(stcb, nc);
+					}
 				}
 				return (1);
 			} else {
