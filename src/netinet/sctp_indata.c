@@ -5301,6 +5301,11 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 		sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
 	}
 	if (!TAILQ_EMPTY(&control->reasm)) {
+		chk = TAILQ_FIRST(&control->reasm);
+		if (chk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
+			control->first_frag_seen = 1;
+		}
+		sctp_deliver_reasm_check(stcb, asoc, strm, SCTP_READ_LOCK_HELD);
 		return;
 	}
 	TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
@@ -5412,10 +5417,12 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 	if (asoc->idata_supported == 0) {
 		uint16_t sid;
 		/* Flush all the un-ordered data based on cum-tsn */
+		SCTP_INP_READ_LOCK(stcb->sctp_ep);
 		for (sid = 0 ; sid < asoc->streamincnt; sid++) {
 			printf("sid:%d forward unordered tsn to new-cum-ack:0x%x\n", sid, new_cum_tsn);
 			sctp_flush_reassm_for_str_seq(stcb, asoc, sid, 0, 0, 1, new_cum_tsn);
 		}
+		SCTP_INP_READ_UNLOCK(stcb->sctp_ep);
 	}
 	/*******************************************************/
 	/* 3. Update the PR-stream re-ordering queues and fix  */
