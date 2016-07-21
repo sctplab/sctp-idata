@@ -70,7 +70,7 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 			struct sctp_stream_in *strm,
 			struct sctp_tcb *stcb,
 			struct sctp_association *asoc,
-			struct sctp_tmit_chunk *chk);
+			struct sctp_tmit_chunk *chk, int lock_held);
 
 
 void
@@ -760,7 +760,7 @@ sctp_build_readq_entry_from_ctl(struct sctp_queued_to_read *nc, struct sctp_queu
 static void 
 sctp_reset_a_control(struct sctp_queued_to_read *control)
 {
-	nc->fsn_included = 0xffffffff;
+	control->fsn_included = 0xffffffff;
 }
 
 static int
@@ -804,7 +804,7 @@ restart:
 			}
 			memset(nc, 0, sizeof(struct sctp_queued_to_read));
 			TAILQ_REMOVE(&control->reasm, chk, sctp_next);
-			sctp_add_chk_to_control(control, strm, stcb, asoc, chk);
+			sctp_add_chk_to_control(control, strm, stcb, asoc, chk, SCTP_READ_LOCK_NOT_HELD);
 			fsn++;
 			cnt_added++;
 			chk = NULL;
