@@ -758,9 +758,17 @@ sctp_build_readq_entry_from_ctl(struct sctp_queued_to_read *nc, struct sctp_queu
 }
 
 static void 
-sctp_reset_a_control(struct sctp_queued_to_read *control)
+sctp_reset_a_control(struct sctp_queued_to_read *control, uint32_t tsn)
 {
-	control->fsn_included = 0xffffffff;
+	control->fsn_included = tsn;
+	if (control->on_read_q) {
+		/* 
+		 * We have to purge it from there,
+		 * hopefully this will work :-)
+		 */
+		TAILQ_REMOVE(&inp->read_queue, control, next);			
+		control->on_read_q = 0;
+	}
 }
 
 static int
@@ -1261,7 +1269,7 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 				      control->on_strm_q);
 #endif
 			}
-		}
+		}	
 		control->end_added = 1;
 		control->last_frag_seen = 1;
 	}
@@ -5316,7 +5324,7 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 				break;
 			}
 		}
-		printf("Removing chunk %p tsn:0x%x\n", chk, chk->rec.data.TSN_seq);
+		printf("Removing chunk %p tsn:0x%x\n", chk, cumtsn);
 		cnt_removed++;
 		TAILQ_REMOVE(&control->reasm, chk, sctp_next);
 		asoc->size_on_reasm_queue -= chk->send_size;
@@ -5333,7 +5341,7 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 			sctp_m_freem(control->data);
 			control->data = NULL;
 		}
-		sctp_reset_a_control(control);
+		sctp_reset_a_control(control, cumtsn);
 		chk = TAILQ_FIRST(&control->reasm);
 		if (chk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
 			TAILQ_REMOVE(&control->reasm, chk, sctp_next);
