@@ -757,9 +757,10 @@ sctp_build_readq_entry_from_ctl(struct sctp_queued_to_read *nc, struct sctp_queu
 	nc->port_from = control->port_from;
 }
 
+
 static int
 sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struct sctp_stream_in *strm,
-		     struct sctp_queued_to_read *control, uint32_t pd_point)
+		     struct sctp_queued_to_read *control, uint32_t pd_point, int inp_read_lock_held)
 {
 	/* Special handling for the old un-ordered data chunk.
 	 * All the chunks/TSN's go to msg_id 0. So
@@ -853,10 +854,10 @@ restart:
 					printf("Add to read-queue ctl:%p\n", control);
 					sctp_add_to_readq(stcb->sctp_ep, stcb, control,
 							  &stcb->sctp_socket->so_rcv, control->end_added,
-							  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
+							  inp_read_lock_held, SCTP_SO_NOT_LOCKED);
 #if defined(__Userspace__)
 				} else {
-					sctp_invoke_recv_callback(stcb->sctp_ep, stcb, control, SCTP_READ_LOCK_NOT_HELD);
+					sctp_invoke_recv_callback(stcb->sctp_ep, stcb, control, inp_read_lock_held);
 #endif
 				}
 				printf("Wake up to read\n");
@@ -890,7 +891,7 @@ restart:
 		control->pdapi_started = 1;
 		sctp_add_to_readq(stcb->sctp_ep, stcb, control,
 		                  &stcb->sctp_socket->so_rcv, control->end_added,
-		                  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
+		                  inp_read_lock_held, SCTP_SO_NOT_LOCKED);
 		sctp_wakeup_the_read_socket(stcb->sctp_ep, stcb, SCTP_SO_NOT_LOCKED);
 		return (0);
 	} else {
@@ -1042,7 +1043,7 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	if ((control) &&
 	    (asoc->idata_supported == 0)) {
 		/* Special handling needed for "old" data format */
-		if (sctp_handle_old_data(stcb, asoc, strm, control, pd_point)) {
+		if (sctp_handle_old_data(stcb, asoc, strm, control, pd_point, inp_read_lock_held)) {
 			goto done_un;
 		}
 	}
