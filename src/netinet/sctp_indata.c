@@ -5482,13 +5482,13 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 				uint16_t strm_at;
 				
 				sctp_flush_reassm_for_str_seq(stcb, asoc, stream, sequence, 0, old, new_cum_tsn);
-				for(strm_at = strm->last_sequence_delivered; SCTP_SSN_GE(sequence, strm_at); strm_at++) {
+				for(strm_at = strm->last_sequence_delivered; SCTP_MSGID_GE(1, sequence, strm_at); strm_at++) {
 					sctp_flush_reassm_for_str_seq(stcb, asoc, stream, strm_at, ordered, old, new_cum_tsn);
 				}
 			} else {
 				uint32_t strm_at;
 
-				for(strm_at = strm->last_sequence_delivered; SCTP_MSGID_GE(sequence, strm_at); strm_at++) {
+				for(strm_at = strm->last_sequence_delivered; SCTP_MSGID_GE(0, sequence, strm_at); strm_at++) {
 					sctp_flush_reassm_for_str_seq(stcb, asoc, stream, strm_at, ordered, old, new_cum_tsn);
 				}
 			}
