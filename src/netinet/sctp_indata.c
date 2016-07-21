@@ -757,6 +757,11 @@ sctp_build_readq_entry_from_ctl(struct sctp_queued_to_read *nc, struct sctp_queu
 	nc->port_from = control->port_from;
 }
 
+static void 
+sctp_reset_a_control(struct sctp_queued_to_read *control)
+{
+	nc->fsn_included = 0xffffffff;
+}
 
 static int
 sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struct sctp_stream_in *strm,
@@ -1199,11 +1204,12 @@ out:
 	return (ret);
 }
 
+
 void
 sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 			struct sctp_stream_in *strm,
 			struct sctp_tcb *stcb, struct sctp_association *asoc,
-			struct sctp_tmit_chunk *chk)
+			struct sctp_tmit_chunk *chk, int hold_rlock)
 {
 	/*
 	 * Given a control and a chunk, merge the
@@ -1212,7 +1218,7 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 	 */
 	int i_locked = 0;
 
-	if (control->on_read_q) {
+	if (control->on_read_q && (hold_rlock == 0)) {
 		/*
 		 * Its being pd-api'd so we must
 		 * do some locks.
@@ -1493,7 +1499,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					at->rec.data.fsn_num,
 					next_fsn, control->fsn_included);
 				TAILQ_REMOVE(&control->reasm, at, sctp_next);
-				sctp_add_chk_to_control(control, strm, stcb, asoc, at);
+				sctp_add_chk_to_control(control, strm, stcb, asoc, at, SCTP_READ_LOCK_NOT_HELD);
 				if (control->on_read_q) {
 					do_wakeup = 1;
 				}
@@ -5284,6 +5290,7 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 	struct sctp_queued_to_read *control;
 	struct sctp_stream_in *strm;
 	struct sctp_tmit_chunk *chk, *nchk;
+	int cnt_removed=0;
 	/*
 	 * For now large messages held on the stream reasm that are
 	 * complete will be tossed too. We could in theory do more
@@ -5310,6 +5317,7 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 			}
 		}
 		printf("Removing chunk %p tsn:0x%x\n", chk, chk->rec.data.TSN_seq);
+		cnt_removed++;
 		TAILQ_REMOVE(&control->reasm, chk, sctp_next);
 		asoc->size_on_reasm_queue -= chk->send_size;
 		sctp_ucount_decr(asoc->cnt_on_reasm_queue);
@@ -5320,9 +5328,16 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 		sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
 	}
 	if (!TAILQ_EMPTY(&control->reasm)) {
+		/* This has to be old data, unordered */
+		if (control->data) {
+			sctp_m_freem(control->data);
+			control->data = NULL;
+		}
+		sctp_reset_a_control(control);
 		chk = TAILQ_FIRST(&control->reasm);
 		if (chk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
-			control->first_frag_seen = 1;
+			sctp_add_chk_to_control(control, strm, stcb, asoc,
+						chk, SCTP_READ_LOCK_HELD);
 		}
 		sctp_deliver_reasm_check(stcb, asoc, strm, SCTP_READ_LOCK_HELD);
 		return;
