@@ -777,16 +777,19 @@ sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struc
 	
 	if (control->first_frag_seen == 0) {
 		/* Nothing we can do, we have not seen the first piece yet */
+		printf("%s -- control:%p does not have FFS fsn_inc:0x%x\n", control, control->fsn_included);
 		return(1);
 	}
 	/* Collapse any we can */
 	cnt_added = 0;
 restart:
+	printf("We have a first on control:%p fsn_included:%x\n", control, control->fsn_included);
 	fsn = control->fsn_included + 1;
 	/* Now what can we add? */
 	TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, lchk) {
 		if (chk->rec.data.fsn_num == fsn) {
 			/* Ok lets add it */
+			printf("see the next chunk fsn:%x\n", fsn);
 			sctp_alloc_a_readq(stcb, nc);
 			if (nc == NULL) {
 				break;
@@ -799,11 +802,13 @@ restart:
 			chk = NULL;
 			if (control->end_added) {
 				/* We are done */
+				printf("Added end\n");
 				if (!TAILQ_EMPTY(&control->reasm)) {
 					/* 
 					 * Ok we have to move anything left on
 					 * the control queue to a new control.
 					 */
+					printf("Ok we will have more to delivery too -- mvto :%p\n", nc);
 					sctp_build_readq_entry_from_ctl(nc, control);
 					tchk = TAILQ_FIRST(&control->reasm);
 					if (tchk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
@@ -835,12 +840,15 @@ restart:
 					strm->pd_api_started = 0;
 					control->pdapi_started = 0;
 				}
+				printf("Now check the strm-q for removal\n");
 				if (control->on_strm_q) {
+					printf("Remove control\n");
 					TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
 					control->on_strm_q = 0;
 					SCTP_STAT_INCR_COUNTER64(sctps_reasmusrmsgs);
 				}
 				if (control->on_read_q == 0) {
+					printf("Add to read-queue ctl:%p\n", control);
 					sctp_add_to_readq(stcb->sctp_ep, stcb, control,
 							  &stcb->sctp_socket->so_rcv, control->end_added,
 							  SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
@@ -849,18 +857,24 @@ restart:
 					sctp_invoke_recv_callback(stcb->sctp_ep, stcb, control, SCTP_READ_LOCK_NOT_HELD);
 #endif
 				}
+				printf("Wake up to read\n");
 				sctp_wakeup_the_read_socket(stcb->sctp_ep, stcb, SCTP_SO_NOT_LOCKED);
 				if ((nc->first_frag_seen) && !TAILQ_EMPTY(&nc->reasm)) {
 					/* Switch to the new guy and continue */
+					printf("Switch to new guy and restart\n")
 					control = nc;
 					goto restart;
 				} else {
 					if (nc->on_strm_q == 0) {
+						printf("Purge new guy not needed\n");
 						sctp_free_a_readq(stcb, nc);
+					} else {
+						printf("new guy is on control now\n");
 					}
 				}
 				return (1);
 			} else {
+				printf("Free unused guy\n");
 				sctp_free_a_readq(stcb, nc);
 			}
 		} else {
@@ -869,6 +883,7 @@ restart:
 		}
 	}
 	if ((control->length > pd_point) && (strm->pd_api_started == 0)) {
+		printf("Wakeup a little suzy\n");
 		strm->pd_api_started = 1;
 		control->pdapi_started = 1;
 		sctp_add_to_readq(stcb->sctp_ep, stcb, control,
@@ -877,6 +892,7 @@ restart:
 		sctp_wakeup_the_read_socket(stcb->sctp_ep, stcb, SCTP_SO_NOT_LOCKED);
 		return (0);
 	} else {
+		printf("Time to say goodbye\n");
 		return (1);
 	}
 }
