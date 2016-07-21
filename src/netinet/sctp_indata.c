@@ -5279,8 +5279,10 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 	}
 	TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, nchk) {
 		/* Purge hanging chunks */
-		if (SCTP_TSN_GT(chk->rec.data.TSN_seq, cumtsn)) {
-			break;
+		if (old && (ordered == 0)) {
+			if (SCTP_TSN_GT(chk->rec.data.TSN_seq, cumtsn)) {
+				break;
+			}
 		}
 		TAILQ_REMOVE(&control->reasm, chk, sctp_next);
 		asoc->size_on_reasm_queue -= chk->send_size;
@@ -5476,16 +5478,19 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 				asoc->fragmented_delivery_inprogress = 0;
 			}
 			strm = &asoc->strmin[stream];
-			if (asoc->idata_supported) {
-				sctp_flush_reassm_for_str_seq(stcb, asoc, stream, sequence, ordered, old, new_cum_tsn);
-			} else {
-				/*
-				 * For old data we must flush the stream/seq for ordered *and* the
-				 * unordered (if there are any). Otherwise it would all get stuck.
-				 */
+			if (asoc->idata_supported == 0) {
+				uint16_t strm_at;
+				
 				sctp_flush_reassm_for_str_seq(stcb, asoc, stream, sequence, 0, old, new_cum_tsn);
-				sctp_flush_reassm_for_str_seq(stcb, asoc, stream, sequence, 1, old, new_cum_tsn);
+				for(strm_at = strm->last_sequence_delivered; SCTP_SSN_GE(sequence, strm_at); strm_at++) {
+					sctp_flush_reassm_for_str_seq(stcb, asoc, stream, strm_at, ordered, old, new_cum_tsn);
+				}
+			} else {
+				uint32_t strm_at;
 
+				for(strm_at = strm->last_sequence_delivered; SCTP_MSGID_GE(sequence, strm_at); strm_at++) {
+					sctp_flush_reassm_for_str_seq(stcb, asoc, stream, strm_at, ordered, old, new_cum_tsn);
+				}
 			}
 			TAILQ_FOREACH(ctl, &stcb->sctp_ep->read_queue, next) {
 				if ((ctl->sinfo_stream == stream) &&
