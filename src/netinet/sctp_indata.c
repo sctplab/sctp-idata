@@ -5277,7 +5277,7 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 	control = find_reasm_entry(strm, (uint32_t)seq, ordered, old);
 	if (control == NULL) {
 		/* Not found */
-		printf("cannot find strm:%d seq:%d ordered:%d old:%d\n", strm, seq, ordered, old);
+		printf("cannot find strm:%d seq:%d ordered:%d old:%d\n", stream, seq, ordered, old);
 		return;
 	}
 	TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, nchk) {
@@ -5413,7 +5413,7 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 		uint16_t sid;
 		/* Flush all the un-ordered data based on cum-tsn */
 		for (sid = 0 ; sid < asoc->streamincnt; sid++) {
-			printf("sid:%d forward unordered tsn to new-cum-ack:0x%x\n", new_cum_tsn);
+			printf("sid:%d forward unordered tsn to new-cum-ack:0x%x\n", sid, new_cum_tsn);
 			sctp_flush_reassm_for_str_seq(stcb, asoc, sid, 0, 0, 1, new_cum_tsn);
 		}
 	}
