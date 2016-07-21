@@ -777,7 +777,9 @@ sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struc
 	
 	if (control->first_frag_seen == 0) {
 		/* Nothing we can do, we have not seen the first piece yet */
-		printf("%s -- control:%p does not have FFS fsn_inc:0x%x\n", control, control->fsn_included);
+		printf("%s -- control:%p does not have FFS fsn_inc:0x%x\n",
+		       __FUNCTION__,
+		       control, control->fsn_included);
 		return(1);
 	}
 	/* Collapse any we can */
@@ -861,7 +863,7 @@ restart:
 				sctp_wakeup_the_read_socket(stcb->sctp_ep, stcb, SCTP_SO_NOT_LOCKED);
 				if ((nc->first_frag_seen) && !TAILQ_EMPTY(&nc->reasm)) {
 					/* Switch to the new guy and continue */
-					printf("Switch to new guy and restart\n")
+					printf("Switch to new guy and restart\n");
 					control = nc;
 					goto restart;
 				} else {
