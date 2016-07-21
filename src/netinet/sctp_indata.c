@@ -5254,10 +5254,11 @@ sctp_kick_prsctp_reorder_queue(struct sctp_tcb *stcb,
 }
 
 
+
 static void
 sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 	struct sctp_association *asoc,
-	uint16_t stream, uint32_t seq, int ordered, int old)
+	uint16_t stream, uint32_t seq, int ordered, int old, uint32_t cumtsn)
 {
 	struct sctp_queued_to_read *control;
 	struct sctp_stream_in *strm;
@@ -5278,6 +5279,9 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 	}
 	TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, nchk) {
 		/* Purge hanging chunks */
+		if (SCTP_TSN_GT(chk->rec.data.TSN_seq, cumtsn)) {
+			break;
+		}
 		TAILQ_REMOVE(&control->reasm, chk, sctp_next);
 		asoc->size_on_reasm_queue -= chk->send_size;
 		sctp_ucount_decr(asoc->cnt_on_reasm_queue);
@@ -5286,6 +5290,9 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 			chk->data = NULL;
 		}
 		sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
+	}
+	if (!TAILQ_EMPTY(&control->reasm)) {
+		return;
 	}
 	TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
 	control->on_strm_q = 0;
@@ -5299,11 +5306,10 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 	}
 }
 
-
 void
 sctp_handle_forward_tsn(struct sctp_tcb *stcb,
                         struct sctp_forward_tsn_chunk *fwd,
-                        int *abort_flag, struct mbuf *m ,int offset)
+                        int *abort_flag, struct mbuf *m , int offset)
 {
 	/* The pr-sctp fwd tsn */
 	/*
@@ -5470,7 +5476,17 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 				asoc->fragmented_delivery_inprogress = 0;
 			}
 			strm = &asoc->strmin[stream];
-			sctp_flush_reassm_for_str_seq(stcb, asoc, stream, sequence, ordered, old);
+			if (asoc->idata_supported) {
+				sctp_flush_reassm_for_str_seq(stcb, asoc, stream, sequence, ordered, old, new_cum_tsn);
+			} else {
+				/*
+				 * For old data we must flush the stream/seq for ordered *and* the
+				 * unordered (if there are any). Otherwise it would all get stuck.
+				 */
+				sctp_flush_reassm_for_str_seq(stcb, asoc, stream, sequence, 0, old, new_cum_tsn);
+				sctp_flush_reassm_for_str_seq(stcb, asoc, stream, sequence, 1, old, new_cum_tsn);
+
+			}
 			TAILQ_FOREACH(ctl, &stcb->sctp_ep->read_queue, next) {
 				if ((ctl->sinfo_stream == stream) &&
 				    (ctl->sinfo_ssn == sequence)) {
