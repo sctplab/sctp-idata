@@ -5402,7 +5402,11 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 	/*************************************************************/
 
 	/* This is now done as part of clearing up the stream/seq */
-
+	if (asoc->idata_supported == 0) {
+		/* Flush all the un-ordered data based on cum-tsn */
+		for (stream = 0 ; stream < asoc->streamincnt; stream++) 
+			sctp_flush_reassm_for_str_seq(stcb, asoc, stream, 0, 0, 1, new_cum_tsn);
+	}
 	/*******************************************************/
 	/* 3. Update the PR-stream re-ordering queues and fix  */
 	/*    delivery issues as needed.                       */
@@ -5480,8 +5484,7 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 			strm = &asoc->strmin[stream];
 			if (asoc->idata_supported == 0) {
 				uint16_t strm_at;
-				
-				sctp_flush_reassm_for_str_seq(stcb, asoc, stream, sequence, 0, old, new_cum_tsn);
+
 				for(strm_at = strm->last_sequence_delivered; SCTP_MSGID_GE(1, sequence, strm_at); strm_at++) {
 					sctp_flush_reassm_for_str_seq(stcb, asoc, stream, strm_at, ordered, old, new_cum_tsn);
 				}
