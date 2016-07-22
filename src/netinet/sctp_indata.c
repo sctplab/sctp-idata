@@ -5336,6 +5336,7 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 		sctp_reset_a_control(control);
 		chk = TAILQ_FIRST(&control->reasm);
 		if (chk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
+			TAILQ_REMOVE(&control->reasm, chk, sctp_next);
 			sctp_add_chk_to_control(control, strm, stcb, asoc,
 						chk, SCTP_READ_LOCK_HELD);
 		}
