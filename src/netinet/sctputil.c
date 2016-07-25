@@ -5278,6 +5278,9 @@ sctp_release_pr_sctp_chunk(struct sctp_tcb *stcb, struct sctp_tmit_chunk *tp1,
 				stcb->asoc.pr_sctp_cnt++;
 			}
 			chk->rec.data.rcv_flags |= SCTP_DATA_LAST_FRAG;
+			if (sp->sinfo_flags & SCTP_UNORDERED) {
+				chk->rec.data.rcv_flags |= SCTP_DATA_UNORDERED;
+			}
 			if (stcb->asoc.idata_supported == 0) {
 				if ((sp->sinfo_flags & SCTP_UNORDERED) == 0) {
 					strq->next_mid_ordered++;
