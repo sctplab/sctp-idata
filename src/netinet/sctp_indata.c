@@ -758,7 +758,8 @@ sctp_build_readq_entry_from_ctl(struct sctp_queued_to_read *nc, struct sctp_queu
 }
 
 static void 
-sctp_reset_a_control(struct sctp_queued_to_read *control, uint32_t tsn)
+sctp_reset_a_control(struct sctp_queued_to_read *control,
+                     struct sctp_inpcb *inp, uint32_t tsn)
 {
 	control->fsn_included = tsn;
 	if (control->on_read_q) {
@@ -766,7 +767,7 @@ sctp_reset_a_control(struct sctp_queued_to_read *control, uint32_t tsn)
 		 * We have to purge it from there,
 		 * hopefully this will work :-)
 		 */
-		TAILQ_REMOVE(&inp->read_queue, control, next);			
+		TAILQ_REMOVE(&inp->read_queue, control, next);
 		control->on_read_q = 0;
 	}
 }
@@ -1269,7 +1270,7 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 				      control->on_strm_q);
 #endif
 			}
-		}	
+		}
 		control->end_added = 1;
 		control->last_frag_seen = 1;
 	}
@@ -5341,7 +5342,7 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 			sctp_m_freem(control->data);
 			control->data = NULL;
 		}
-		sctp_reset_a_control(control, cumtsn);
+		sctp_reset_a_control(control, stcb->sctp_ep, cumtsn);
 		chk = TAILQ_FIRST(&control->reasm);
 		if (chk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
 			TAILQ_REMOVE(&control->reasm, chk, sctp_next);
@@ -5351,7 +5352,18 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 		sctp_deliver_reasm_check(stcb, asoc, strm, SCTP_READ_LOCK_HELD);
 		return;
 	}
-	TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
+	if (control->on_strm_q == SCTP_ON_ORDERED) {
+		TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
+		control->on_strm_q = 0;
+	} else if (control->on_strm_q == SCTP_ON_UNORDERED) {
+		TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
+		control->on_strm_q = 0;
+#ifdef INVARIANTS
+	} else if (control->on_strm_q) {
+		panic("strm: %p ctl: %p unknown %d",
+		    strm, control, control->on_strm_q);
+#endif
+	}
 	control->on_strm_q = 0;
 	if (control->on_read_q == 0) {
 		sctp_free_remote_addr(control->whoFrom);
