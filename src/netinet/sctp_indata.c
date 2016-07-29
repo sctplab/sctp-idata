@@ -404,7 +404,7 @@ sctp_place_control_in_stream(struct sctp_stream_in *strm,
 				 * Gak, He sent me a duplicate msg
 				 * id number?? return -1 to abort.
 				 */
-				return(-1);
+				return (-1);
 			} else {
 				if (TAILQ_NEXT(at, next_instrm) == NULL) {
 					/*
@@ -795,7 +795,7 @@ sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struc
 		printf("%s -- control:%p does not have FFS fsn_inc:0x%x\n",
 		       __FUNCTION__,
 		       control, control->fsn_included);
-		return(1);
+		return (1);
 	}
 	/* Collapse any we can */
 	cnt_added = 0;
@@ -1063,7 +1063,7 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	}
 	if (strm->pd_api_started) {
 		/* Can't add more */
-		return(0);
+		return (0);
 	}
 	while (control) {
 		SCTPDBG(SCTP_DEBUG_XXX, "Looking at control: %p e(%d) ssn: %u top_fsn: %u inc_fsn: %u -uo\n",
@@ -1107,10 +1107,10 @@ done_un:
 	control = TAILQ_FIRST(&strm->inqueue);
 	if (strm->pd_api_started) {
 		/* Can't add more */
-		return(0);
+		return (0);
 	}
 	if (control == NULL) {
-		return(ret);
+		return (ret);
 	}
 	if (strm->last_sequence_delivered == control->sinfo_ssn) {
 		/* Ok the guy at the top was being partially delivered
@@ -1151,7 +1151,7 @@ done_un:
 	}
 	if (strm->pd_api_started) {
 		/* Can't add more must have gotten an un-ordered above being partially delivered. */
-		return(0);
+		return (0);
 	}
 deliver_more:
 	next_to_del = strm->last_sequence_delivered + 1;
