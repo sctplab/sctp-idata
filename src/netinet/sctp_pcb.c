@@ -7897,6 +7897,12 @@ sctp_drain_mbufs(struct sctp_tcb *stcb)
 	/* Ok that was fun, now we will drain all the inbound streams? */
 	for (strmat = 0; strmat < asoc->streamincnt; strmat++) {
 		TAILQ_FOREACH_SAFE(ctl, &asoc->strmin[strmat].inqueue, next_instrm, nctl) {
+#ifdef INVARIANTS
+			if (ctl->on_strm_q != SCTP_ON_ORDERED ) {
+				panic("Huh control: %p on_q: %d -- not ordered?",
+				      ctl, ctl->on_strm_q);
+			}
+#endif
 			if (SCTP_TSN_GT(ctl->sinfo_tsn, cumulative_tsn_p1)) {
 				/* Yep it is above cum-ack */
 				cnt++;
@@ -7904,7 +7910,12 @@ sctp_drain_mbufs(struct sctp_tcb *stcb)
 				asoc->size_on_all_streams = sctp_sbspace_sub(asoc->size_on_all_streams, ctl->length);
 				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				SCTP_UNSET_TSN_PRESENT(asoc->mapping_array, gap);
+				if (ctl->on_read_q) {
+					TAILQ_REMOVE(&stcb->sctp_ep->read_queue, ctl, next);
+					ctl->on_read_q = 0;
+				}
 				TAILQ_REMOVE(&asoc->strmin[strmat].inqueue, ctl, next_instrm);
+				ctl->on_strm_q = 0;
 				if (ctl->data) {
 					sctp_m_freem(ctl->data);
 					ctl->data = NULL;
@@ -7928,6 +7939,12 @@ sctp_drain_mbufs(struct sctp_tcb *stcb)
 			}
 		}
 		TAILQ_FOREACH_SAFE(ctl, &asoc->strmin[strmat].uno_inqueue, next_instrm, nctl) {
+#ifdef INVARIANTS
+			if (ctl->on_strm_q != SCTP_ON_UNORDERED ) {
+				panic("Huh control: %p on_q: %d -- not unordered?",
+				      ctl, ctl->on_strm_q);
+			}
+#endif
 			if (SCTP_TSN_GT(ctl->sinfo_tsn, cumulative_tsn_p1)) {
 				/* Yep it is above cum-ack */
 				cnt++;
@@ -7935,7 +7952,12 @@ sctp_drain_mbufs(struct sctp_tcb *stcb)
 				asoc->size_on_all_streams = sctp_sbspace_sub(asoc->size_on_all_streams, ctl->length);
 				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				SCTP_UNSET_TSN_PRESENT(asoc->mapping_array, gap);
+				if (ctl->on_read_q) {
+					TAILQ_REMOVE(&stcb->sctp_ep->read_queue, ctl, next);
+					ctl->on_read_q = 0;
+				}
 				TAILQ_REMOVE(&asoc->strmin[strmat].uno_inqueue, ctl, next_instrm);
+				ctl->on_strm_q = 0;
 				if (ctl->data) {
 					sctp_m_freem(ctl->data);
 					ctl->data = NULL;
