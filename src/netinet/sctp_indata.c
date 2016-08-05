@@ -467,7 +467,7 @@ sctp_abort_in_reasm(struct sctp_tcb *stcb,
 }
 
 static void
-clean_up_control(struct sctp_tcb *stcb, struct sctp_queued_to_read *control)
+sctp_clean_up_control(struct sctp_tcb *stcb, struct sctp_queued_to_read *control)
 {
 	/* 
 	 * The control could not be placed and must be cleaned.
@@ -630,7 +630,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 			snprintf(msg, sizeof(msg),
 				 "Queue to str msg_id: %u duplicate",
 				 control->msg_id);
-			clean_up_control(stcb, control);
+			sctp_clean_up_control(stcb, control);
 			op_err = sctp_generate_cause(SCTP_CAUSE_PROTOCOL_VIOLATION, msg);
 			stcb->sctp_ep->last_abort_code = SCTP_FROM_SCTP_INDATA + SCTP_LOC_3;
 			sctp_abort_an_association(stcb->sctp_ep, stcb, op_err, SCTP_SO_NOT_LOCKED);
@@ -651,6 +651,7 @@ sctp_setup_tail_pointer(struct sctp_queued_to_read *control)
 	control->length = 0;
 	m = control->data;
 	while (m) {
+		printf("sctp_setup_tail_pointer: control: %p, m: %p, adding %u\n", control, m, SCTP_BUF_LEN(m));
 		if (SCTP_BUF_LEN(m) == 0) {
 			/* Skip mbufs with NO length */
 			if (prev == NULL) {
@@ -688,6 +689,7 @@ sctp_add_to_tail_pointer(struct sctp_queued_to_read *control, struct mbuf *m)
 	struct mbuf *prev=NULL;
 	struct sctp_tcb *stcb;
 
+	printf("sctp_add_to_tail_pointer(): control: %p, data: %p, m: %p, len: %u\n", control, control->data, m, SCTP_BUF_LEN(m));
 	stcb = control->stcb;
 	if (stcb == NULL) {
 #ifdef INVARIANTS
@@ -698,6 +700,7 @@ sctp_add_to_tail_pointer(struct sctp_queued_to_read *control, struct mbuf *m)
 	}
 	if (control->tail_mbuf == NULL) {
 		/* TSNH */
+		printf("TSNH\n");
 		control->data = m;
 		sctp_setup_tail_pointer(control);
 		return;
@@ -773,8 +776,12 @@ sctp_reset_a_control(struct sctp_queued_to_read *control,
 }
 
 static int
-sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struct sctp_stream_in *strm,
-		     struct sctp_queued_to_read *control, uint32_t pd_point, int inp_read_lock_held)
+sctp_handle_old_unordered_data(struct sctp_tcb *stcb,
+                               struct sctp_association *asoc,
+                               struct sctp_stream_in *strm,
+                               struct sctp_queued_to_read *control,
+                               uint32_t pd_point,
+                               int inp_read_lock_held)
 {
 	/* Special handling for the old un-ordered data chunk.
 	 * All the chunks/TSN's go to msg_id 0. So
@@ -789,7 +796,10 @@ sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struc
 	uint32_t fsn;
 	struct sctp_queued_to_read *nc;
 	int cnt_added;
-	
+
+	printf("%s -- control:%p fsn_inc:0x%x FFS: %u, LFS: %u, EA: %u\n",
+	       __FUNCTION__,
+	       control, control->fsn_included, control->first_frag_seen, control->last_frag_seen, control->end_added);
 	if (control->first_frag_seen == 0) {
 		/* Nothing we can do, we have not seen the first piece yet */
 		printf("%s -- control:%p does not have FFS fsn_inc:0x%x\n",
@@ -800,9 +810,13 @@ sctp_handle_old_data(struct sctp_tcb *stcb, struct sctp_association *asoc, struc
 	/* Collapse any we can */
 	cnt_added = 0;
 restart:
-	printf("We have a first on control:%p fsn_included:%x\n", control, control->fsn_included);
+	printf("We have a first on control:%p fsn_included:%x len: %u sinfo_tsn: 0x%x, sinfo_ppid: 0x%x\n", control, control->fsn_included, control->length, control->sinfo_tsn, ntohl(control->sinfo_ppid));
 	fsn = control->fsn_included + 1;
 	/* Now what can we add? */
+	printf("Reassembly queue:\n");
+	TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, lchk) {
+		printf("FSN: 0x%x, TSN: 0x%x, Flags: 0x%x, PPID: 0x%x, data: %p\n", chk->rec.data.fsn_num, chk->rec.data.TSN_seq, chk->rec.data.rcv_flags, ntohl(chk->rec.data.payloadtype), chk->data);
+	}
 	TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, lchk) {
 		if (chk->rec.data.fsn_num == fsn) {
 			/* Ok lets add it */
@@ -826,25 +840,36 @@ restart:
 					 * the control queue to a new control.
 					 */
 					printf("Ok we will have more to delivery too -- mvto :%p\n", nc);
+					printf("1 nc->length: %u\n", nc->length);
 					sctp_build_readq_entry_from_ctl(nc, control);
+					printf("2 nc->length: %u\n", nc->length);
 					tchk = TAILQ_FIRST(&control->reasm);
+					printf("Moving FSN 0x%x\n", tchk->rec.data.fsn_num);
 					if (tchk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
 						TAILQ_REMOVE(&control->reasm, tchk, sctp_next);
 						nc->first_frag_seen = 1;
 						nc->fsn_included = tchk->rec.data.fsn_num;
 						nc->data = tchk->data;
+						nc->sinfo_ppid = tchk->rec.data.payloadtype;
+						nc->sinfo_tsn = tchk->rec.data.TSN_seq;
+						printf("tchk->send_size = %u\n", tchk->send_size);
 						sctp_mark_non_revokable(asoc, tchk->rec.data.TSN_seq);
 						tchk->data = NULL;
 						sctp_free_a_chunk(stcb, tchk, SCTP_SO_NOT_LOCKED);
+						printf("3 nc->length: %u\n", nc->length);
 						sctp_setup_tail_pointer(nc);
+						printf("4 nc->length: %u\n", nc->length);
 						tchk = TAILQ_FIRST(&control->reasm);
 					}
 					/* Spin the rest onto the queue */
+					printf("5 nc->length: %u\n", nc->length);
 					while (tchk) {
+						printf("Moving TSN 0x%x\n", tchk->rec.data.TSN_seq);
 						TAILQ_REMOVE(&control->reasm, tchk, sctp_next);
 						TAILQ_INSERT_TAIL(&nc->reasm, tchk, sctp_next);
 						tchk = TAILQ_FIRST(&control->reasm);
 					}
+					printf("6 nc->length: %u\n", nc->length);
 					/* Now lets add it to the queue after removing control */
 					TAILQ_INSERT_TAIL(&strm->uno_inqueue, nc, next_instrm);
 					nc->on_strm_q = SCTP_ON_UNORDERED;
@@ -865,7 +890,7 @@ restart:
 					SCTP_STAT_INCR_COUNTER64(sctps_reasmusrmsgs);
 				}
 				if (control->on_read_q == 0) {
-					printf("Add to read-queue ctl:%p\n", control);
+					printf("Add to read-queue ctl: %p, len: %u\n", control, control->length);
 					sctp_add_to_readq(stcb->sctp_ep, stcb, control,
 							  &stcb->sctp_socket->so_rcv, control->end_added,
 							  inp_read_lock_held, SCTP_SO_NOT_LOCKED);
@@ -874,11 +899,14 @@ restart:
 					sctp_invoke_recv_callback(stcb->sctp_ep, stcb, control, inp_read_lock_held);
 #endif
 				}
+				printf("7 nc->length: %u\n", nc->length);
 				printf("Wake up to read\n");
+				printf("1 old %p, length: %u, new: %p, length: %u\n", control, control->length, nc, nc->length);
 				sctp_wakeup_the_read_socket(stcb->sctp_ep, stcb, SCTP_SO_NOT_LOCKED);
 				if ((nc->first_frag_seen) && !TAILQ_EMPTY(&nc->reasm)) {
 					/* Switch to the new guy and continue */
 					printf("Switch to new guy and restart\n");
+					printf("2 old %p, length: %u, new: %p, length: %u\n", control, control->length, nc, nc->length);
 					control = nc;
 					goto restart;
 				} else {
@@ -915,17 +943,21 @@ restart:
 }
 
 static void
-sctp_inject_old_data_unordered(struct sctp_tcb *stcb, struct sctp_association *asoc,
-			       struct sctp_queued_to_read *control,
-			       struct sctp_tmit_chunk *chk,
-			       int *abort_flag)
+sctp_inject_old_unordered_data(struct sctp_tcb *stcb,
+                               struct sctp_association *asoc,
+                               struct sctp_queued_to_read *control,
+                               struct sctp_tmit_chunk *chk,
+                               int *abort_flag)
 {
 	struct sctp_tmit_chunk *at;
-	int inserted = 0;
+	int inserted;
 	/*
 	 * Here we need to place the chunk into the control structure
 	 * sorted in the correct order.
 	 */
+	printf("%s -- control:%p, chk fsn:0x%x, fsn_inc:0x%x\n",
+	       __FUNCTION__,
+	       control,chk->rec.data.fsn_num, control->fsn_included);
 	if (chk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
 		/* Its the very first one. */
 		SCTPDBG(SCTP_DEBUG_XXX,
@@ -971,18 +1003,29 @@ sctp_inject_old_data_unordered(struct sctp_tcb *stcb, struct sctp_association *a
 			tdata = control->data;
 			control->data = chk->data;
 			chk->data = tdata;
-			/* Swap the lengths */
-			tmp = control->length;
-			control->length = chk->send_size;
-			chk->send_size = tmp;
+			/* Save the lengths */
+			chk->send_size = control->length;
+			/* Recompute length of control and tail pointer */
+			sctp_setup_tail_pointer(control);
 			/* Fix the FSN included */
 			tmp = control->fsn_included;
 			control->fsn_included = chk->rec.data.fsn_num;
 			chk->rec.data.fsn_num = tmp;
+			/* Fix the TSN included */
+			tmp = control->sinfo_tsn;
+			control->sinfo_tsn = chk->rec.data.TSN_seq;
+			chk->rec.data.TSN_seq = tmp;
+			/* Fix the PPID included */
+			tmp = control->sinfo_ppid;
+			control->sinfo_ppid = chk->rec.data.payloadtype;
+			chk->rec.data.payloadtype = tmp;
+			/* Fix tail pointer */
 			goto place_chunk;
 		}
 		control->first_frag_seen = 1;
 		control->top_fsn = control->fsn_included = chk->rec.data.fsn_num;
+		control->sinfo_tsn = chk->rec.data.TSN_seq;
+		control->sinfo_ppid = chk->rec.data.payloadtype;
 		control->data = chk->data;
 		sctp_mark_non_revokable(asoc, chk->rec.data.TSN_seq);
 		chk->data = NULL;
@@ -991,12 +1034,7 @@ sctp_inject_old_data_unordered(struct sctp_tcb *stcb, struct sctp_association *a
 		return;
 	}
 place_chunk:
-	if (TAILQ_EMPTY(&control->reasm)) {
-		TAILQ_INSERT_TAIL(&control->reasm, chk, sctp_next);
-		asoc->size_on_reasm_queue += chk->send_size;
-		sctp_ucount_incr(asoc->cnt_on_reasm_queue);
-		return;
-	}
+	inserted = 0;
 	TAILQ_FOREACH(at, &control->reasm, sctp_next) {
 		if (SCTP_TSN_GT(at->rec.data.fsn_num, chk->rec.data.fsn_num)) {
 			/*
@@ -1054,10 +1092,14 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		pd_point = stcb->sctp_ep->partial_delivery_point;
 	}
 	control = TAILQ_FIRST(&strm->uno_inqueue);
+	printf("%s -- control:%p, fsn_inc:0x%x\n",
+	       __FUNCTION__,
+	       control, control->fsn_included);
+
 	if ((control) &&
 	    (asoc->idata_supported == 0)) {
 		/* Special handling needed for "old" data format */
-		if (sctp_handle_old_data(stcb, asoc, strm, control, pd_point, inp_read_lock_held)) {
+		if (sctp_handle_old_unordered_data(stcb, asoc, strm, control, pd_point, inp_read_lock_held)) {
 			goto done_un;
 		}
 	}
@@ -1235,12 +1277,14 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 		SCTP_INP_READ_LOCK(stcb->sctp_ep);
 		i_locked = 1;
 	}
+	printf("Adding FSN 0x%x to control %p, data %p, length %u\n", chk->rec.data.fsn_num, control, control->data, control->length);
 	if (control->data == NULL) {
 		control->data = chk->data;
 		sctp_setup_tail_pointer(control);
 	} else {
 		sctp_add_to_tail_pointer(control, chk->data);
 	}
+	printf("Length now %u\n", control->length);
 	control->fsn_included = chk->rec.data.fsn_num;
 	asoc->size_on_reasm_queue -= chk->send_size;
 	sctp_ucount_decr(asoc->cnt_on_reasm_queue);
@@ -1301,6 +1345,9 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	/*
 	 * For old un-ordered data chunks.
 	 */
+	printf("%s -- control:%p, chk fsn:0x%x, fsn_inc:0x%x, control->sinfo_tsn: 0x%x, control->sinfo_ppid: 0x%x\n",
+	       __FUNCTION__,
+	       control, chk->rec.data.fsn_num, control->fsn_included, control->sinfo_tsn, ntohl(control->sinfo_ppid));
 	if ((control->sinfo_flags >> 8) & SCTP_DATA_UNORDERED) {
 		unordered = 1;
 	} else {
@@ -1310,7 +1357,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	if (created_control) {
 		if (sctp_place_control_in_stream(strm, asoc, control)) {
 			/* Duplicate SSN? */
-			clean_up_control(stcb, control);
+			sctp_clean_up_control(stcb, control);
 			sctp_abort_in_reasm(stcb, control, chk,
 					    abort_flag,
 					    SCTP_FROM_SCTP_INDATA + SCTP_LOC_6);
@@ -1331,7 +1378,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		}
 	}
 	if ((asoc->idata_supported == 0) && (unordered == 1)) {
-		sctp_inject_old_data_unordered(stcb, asoc, control, chk, abort_flag);
+		sctp_inject_old_unordered_data(stcb, asoc, control, chk, abort_flag);
 		return;
 	}
 	/*
@@ -1542,7 +1589,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 }
 
 static struct sctp_queued_to_read *
-find_reasm_entry(struct sctp_stream_in *strm, uint32_t msg_id, int ordered, int old)
+sctp_find_reasm_entry(struct sctp_stream_in *strm, uint32_t msg_id, int ordered, int old)
 {
 	struct sctp_queued_to_read *control;
 
@@ -1618,6 +1665,10 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		old_data = 1;
 	}
 	chunk_flags = ch->ch.chunk_flags;
+	printf("%s -- type: 0x%x, flags: 0x%x, tsn: 0x%x\n",
+	       __FUNCTION__,
+	       chtype, chunk_flags, tsn);
+
 	if ((size_t)chk_length == clen) {
 		/*
 		 * Need to send an abort since we had a
@@ -1752,7 +1803,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	}
 	if ((chunk_flags & SCTP_DATA_NOT_FRAG) != SCTP_DATA_NOT_FRAG) {
 		/* See if we can find the re-assembly entity */
-		control = find_reasm_entry(strm, msg_id, ordered, old_data);
+		control = sctp_find_reasm_entry(strm, msg_id, ordered, old_data);
 		SCTPDBG(SCTP_DEBUG_XXX, "chunk_flags:0x%x look for control on queues %p\n",
 			chunk_flags, control);
 		if (control) {
@@ -1782,7 +1833,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		 */
 		SCTPDBG(SCTP_DEBUG_XXX, "chunk_flags:0x%x look for msg in case we have dup\n",
 			chunk_flags);
-		if (find_reasm_entry(strm, msg_id, ordered, old_data)) {
+		if (sctp_find_reasm_entry(strm, msg_id, ordered, old_data)) {
 			SCTPDBG(SCTP_DEBUG_XXX, "chunk_flags: 0x%x dup detected on msg_id: %u\n",
 				chunk_flags,
 				msg_id);
@@ -2018,6 +2069,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			}
 			return (0);
 		}
+		printf("Setting chk: TSN: 0x%x, FSN: 0x%x\n", tsn, fsn);
 		chk->rec.data.TSN_seq = tsn;
 		chk->no_fr_allowed = 0;
 		chk->rec.data.fsn_num = fsn;
@@ -5309,7 +5361,7 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 	 * for now we just dump everything on the queue.
 	 */
 	strm = &asoc->strmin[stream];
-	control = find_reasm_entry(strm, (uint32_t)seq, ordered, old);
+	control = sctp_find_reasm_entry(strm, (uint32_t)seq, ordered, old);
 	if (control == NULL) {
 		/* Not found */
 		printf("cannot find strm:%d seq:%d ordered:%d old:%d\n", stream, seq, ordered, old);
