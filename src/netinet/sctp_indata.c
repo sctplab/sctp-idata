@@ -651,7 +651,6 @@ sctp_setup_tail_pointer(struct sctp_queued_to_read *control)
 	control->length = 0;
 	m = control->data;
 	while (m) {
-		printf("sctp_setup_tail_pointer: control: %p, m: %p, adding %u\n", control, m, SCTP_BUF_LEN(m));
 		if (SCTP_BUF_LEN(m) == 0) {
 			/* Skip mbufs with NO length */
 			if (prev == NULL) {
@@ -689,7 +688,6 @@ sctp_add_to_tail_pointer(struct sctp_queued_to_read *control, struct mbuf *m)
 	struct mbuf *prev=NULL;
 	struct sctp_tcb *stcb;
 
-	printf("sctp_add_to_tail_pointer(): control: %p, data: %p, m: %p, len: %u\n", control, control->data, m, SCTP_BUF_LEN(m));
 	stcb = control->stcb;
 	if (stcb == NULL) {
 #ifdef INVARIANTS
@@ -700,7 +698,6 @@ sctp_add_to_tail_pointer(struct sctp_queued_to_read *control, struct mbuf *m)
 	}
 	if (control->tail_mbuf == NULL) {
 		/* TSNH */
-		printf("TSNH\n");
 		control->data = m;
 		sctp_setup_tail_pointer(control);
 		return;
@@ -797,30 +794,18 @@ sctp_handle_old_unordered_data(struct sctp_tcb *stcb,
 	struct sctp_queued_to_read *nc;
 	int cnt_added;
 
-	printf("%s -- control:%p fsn_inc:0x%x FFS: %u, LFS: %u, EA: %u\n",
-	       __FUNCTION__,
-	       control, control->fsn_included, control->first_frag_seen, control->last_frag_seen, control->end_added);
 	if (control->first_frag_seen == 0) {
 		/* Nothing we can do, we have not seen the first piece yet */
-		printf("%s -- control:%p does not have FFS fsn_inc:0x%x\n",
-		       __FUNCTION__,
-		       control, control->fsn_included);
 		return (1);
 	}
 	/* Collapse any we can */
 	cnt_added = 0;
 restart:
-	printf("We have a first on control:%p fsn_included:%x len: %u sinfo_tsn: 0x%x, sinfo_ppid: 0x%x\n", control, control->fsn_included, control->length, control->sinfo_tsn, ntohl(control->sinfo_ppid));
 	fsn = control->fsn_included + 1;
 	/* Now what can we add? */
-	printf("Reassembly queue:\n");
-	TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, lchk) {
-		printf("FSN: 0x%x, TSN: 0x%x, Flags: 0x%x, PPID: 0x%x, data: %p\n", chk->rec.data.fsn_num, chk->rec.data.TSN_seq, chk->rec.data.rcv_flags, ntohl(chk->rec.data.payloadtype), chk->data);
-	}
 	TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, lchk) {
 		if (chk->rec.data.fsn_num == fsn) {
 			/* Ok lets add it */
-			printf("see the next chunk fsn:%x\n", fsn);
 			sctp_alloc_a_readq(stcb, nc);
 			if (nc == NULL) {
 				break;
@@ -833,18 +818,13 @@ restart:
 			chk = NULL;
 			if (control->end_added) {
 				/* We are done */
-				printf("Added end\n");
 				if (!TAILQ_EMPTY(&control->reasm)) {
 					/* 
 					 * Ok we have to move anything left on
 					 * the control queue to a new control.
 					 */
-					printf("Ok we will have more to delivery too -- mvto :%p\n", nc);
-					printf("1 nc->length: %u\n", nc->length);
 					sctp_build_readq_entry_from_ctl(nc, control);
-					printf("2 nc->length: %u\n", nc->length);
 					tchk = TAILQ_FIRST(&control->reasm);
-					printf("Moving FSN 0x%x\n", tchk->rec.data.fsn_num);
 					if (tchk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
 						TAILQ_REMOVE(&control->reasm, tchk, sctp_next);
 						nc->first_frag_seen = 1;
@@ -852,24 +832,18 @@ restart:
 						nc->data = tchk->data;
 						nc->sinfo_ppid = tchk->rec.data.payloadtype;
 						nc->sinfo_tsn = tchk->rec.data.TSN_seq;
-						printf("tchk->send_size = %u\n", tchk->send_size);
 						sctp_mark_non_revokable(asoc, tchk->rec.data.TSN_seq);
 						tchk->data = NULL;
 						sctp_free_a_chunk(stcb, tchk, SCTP_SO_NOT_LOCKED);
-						printf("3 nc->length: %u\n", nc->length);
 						sctp_setup_tail_pointer(nc);
-						printf("4 nc->length: %u\n", nc->length);
 						tchk = TAILQ_FIRST(&control->reasm);
 					}
 					/* Spin the rest onto the queue */
-					printf("5 nc->length: %u\n", nc->length);
 					while (tchk) {
-						printf("Moving TSN 0x%x\n", tchk->rec.data.TSN_seq);
 						TAILQ_REMOVE(&control->reasm, tchk, sctp_next);
 						TAILQ_INSERT_TAIL(&nc->reasm, tchk, sctp_next);
 						tchk = TAILQ_FIRST(&control->reasm);
 					}
-					printf("6 nc->length: %u\n", nc->length);
 					/* Now lets add it to the queue after removing control */
 					TAILQ_INSERT_TAIL(&strm->uno_inqueue, nc, next_instrm);
 					nc->on_strm_q = SCTP_ON_UNORDERED;
@@ -882,15 +856,12 @@ restart:
 					strm->pd_api_started = 0;
 					control->pdapi_started = 0;
 				}
-				printf("Now check the strm-q for removal\n");
 				if (control->on_strm_q) {
-					printf("Remove control\n");
 					TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
 					control->on_strm_q = 0;
 					SCTP_STAT_INCR_COUNTER64(sctps_reasmusrmsgs);
 				}
 				if (control->on_read_q == 0) {
-					printf("Add to read-queue ctl: %p, len: %u\n", control, control->length);
 					sctp_add_to_readq(stcb->sctp_ep, stcb, control,
 							  &stcb->sctp_socket->so_rcv, control->end_added,
 							  inp_read_lock_held, SCTP_SO_NOT_LOCKED);
@@ -899,27 +870,18 @@ restart:
 					sctp_invoke_recv_callback(stcb->sctp_ep, stcb, control, inp_read_lock_held);
 #endif
 				}
-				printf("7 nc->length: %u\n", nc->length);
-				printf("Wake up to read\n");
-				printf("1 old %p, length: %u, new: %p, length: %u\n", control, control->length, nc, nc->length);
 				sctp_wakeup_the_read_socket(stcb->sctp_ep, stcb, SCTP_SO_NOT_LOCKED);
 				if ((nc->first_frag_seen) && !TAILQ_EMPTY(&nc->reasm)) {
 					/* Switch to the new guy and continue */
-					printf("Switch to new guy and restart\n");
-					printf("2 old %p, length: %u, new: %p, length: %u\n", control, control->length, nc, nc->length);
 					control = nc;
 					goto restart;
 				} else {
 					if (nc->on_strm_q == 0) {
-						printf("Purge new guy not needed\n");
 						sctp_free_a_readq(stcb, nc);
-					} else {
-						printf("new guy is on control now\n");
 					}
 				}
 				return (1);
 			} else {
-				printf("Free unused guy\n");
 				sctp_free_a_readq(stcb, nc);
 			}
 		} else {
@@ -928,7 +890,6 @@ restart:
 		}
 	}
 	if ((control->length > pd_point) && (strm->pd_api_started == 0)) {
-		printf("Wakeup a little suzy\n");
 		strm->pd_api_started = 1;
 		control->pdapi_started = 1;
 		sctp_add_to_readq(stcb->sctp_ep, stcb, control,
@@ -937,7 +898,6 @@ restart:
 		sctp_wakeup_the_read_socket(stcb->sctp_ep, stcb, SCTP_SO_NOT_LOCKED);
 		return (0);
 	} else {
-		printf("Time to say goodbye\n");
 		return (1);
 	}
 }
@@ -955,9 +915,6 @@ sctp_inject_old_unordered_data(struct sctp_tcb *stcb,
 	 * Here we need to place the chunk into the control structure
 	 * sorted in the correct order.
 	 */
-	printf("%s -- control:%p, chk fsn:0x%x, fsn_inc:0x%x\n",
-	       __FUNCTION__,
-	       control,chk->rec.data.fsn_num, control->fsn_included);
 	if (chk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
 		/* Its the very first one. */
 		SCTPDBG(SCTP_DEBUG_XXX,
@@ -1092,9 +1049,6 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		pd_point = stcb->sctp_ep->partial_delivery_point;
 	}
 	control = TAILQ_FIRST(&strm->uno_inqueue);
-	printf("%s -- control:%p, fsn_inc:0x%x\n",
-	       __FUNCTION__,
-	       control, control ? control->fsn_included : 0);
 
 	if ((control) &&
 	    (asoc->idata_supported == 0)) {
@@ -1277,14 +1231,12 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 		SCTP_INP_READ_LOCK(stcb->sctp_ep);
 		i_locked = 1;
 	}
-	printf("Adding FSN 0x%x to control %p, data %p, length %u\n", chk->rec.data.fsn_num, control, control->data, control->length);
 	if (control->data == NULL) {
 		control->data = chk->data;
 		sctp_setup_tail_pointer(control);
 	} else {
 		sctp_add_to_tail_pointer(control, chk->data);
 	}
-	printf("Length now %u\n", control->length);
 	control->fsn_included = chk->rec.data.fsn_num;
 	asoc->size_on_reasm_queue -= chk->send_size;
 	sctp_ucount_decr(asoc->cnt_on_reasm_queue);
@@ -1345,9 +1297,6 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	/*
 	 * For old un-ordered data chunks.
 	 */
-	printf("%s -- control:%p, chk fsn:0x%x, fsn_inc:0x%x, control->sinfo_tsn: 0x%x, control->sinfo_ppid: 0x%x\n",
-	       __FUNCTION__,
-	       control, chk->rec.data.fsn_num, control->fsn_included, control->sinfo_tsn, ntohl(control->sinfo_ppid));
 	if ((control->sinfo_flags >> 8) & SCTP_DATA_UNORDERED) {
 		unordered = 1;
 	} else {
@@ -1667,10 +1616,6 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		old_data = 1;
 	}
 	chunk_flags = ch->ch.chunk_flags;
-	printf("%s -- type: 0x%x, flags: 0x%x, tsn: 0x%x, ppid: 0x%x\n",
-	       __FUNCTION__,
-	       chtype, chunk_flags, tsn, ntohl(protocol_id));
-
 	if ((size_t)chk_length == clen) {
 		/*
 		 * Need to send an abort since we had a
@@ -2070,7 +2015,6 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			}
 			return (0);
 		}
-		printf("Setting chk: TSN: 0x%x, FSN: 0x%x\n", tsn, fsn);
 		chk->rec.data.TSN_seq = tsn;
 		chk->no_fr_allowed = 0;
 		chk->rec.data.fsn_num = fsn;
@@ -5365,20 +5309,15 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 	control = sctp_find_reasm_entry(strm, (uint32_t)seq, ordered, old);
 	if (control == NULL) {
 		/* Not found */
-		printf("cannot find strm:%d seq:%d ordered:%d old:%d\n", stream, seq, ordered, old);
 		return;
 	}
 	TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, nchk) {
 		/* Purge hanging chunks */
 		if (old && (ordered == 0)) {
-			printf("Check if TSN:0x%x > cumtsn:0x%x\n",
-			       chk->rec.data.TSN_seq, cumtsn);
 			if (SCTP_TSN_GT(chk->rec.data.TSN_seq, cumtsn)) {
-				printf("Stopping\n");
 				break;
 			}
 		}
-		printf("Removing chunk %p tsn:0x%x\n", chk, cumtsn);
 		cnt_removed++;
 		TAILQ_REMOVE(&control->reasm, chk, sctp_next);
 		asoc->size_on_reasm_queue -= chk->send_size;
@@ -5527,7 +5466,6 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 		/* Flush all the un-ordered data based on cum-tsn */
 		SCTP_INP_READ_LOCK(stcb->sctp_ep);
 		for (sid = 0 ; sid < asoc->streamincnt; sid++) {
-			printf("sid:%d forward unordered tsn to new-cum-ack:0x%x\n", sid, new_cum_tsn);
 			sctp_flush_reassm_for_str_seq(stcb, asoc, sid, 0, 0, 1, new_cum_tsn);
 		}
 		SCTP_INP_READ_UNLOCK(stcb->sctp_ep);
