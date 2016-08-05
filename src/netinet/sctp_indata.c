@@ -1667,9 +1667,9 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		old_data = 1;
 	}
 	chunk_flags = ch->ch.chunk_flags;
-	printf("%s -- type: 0x%x, flags: 0x%x, tsn: 0x%x\n",
+	printf("%s -- type: 0x%x, flags: 0x%x, tsn: 0x%x, ppid: 0x%x\n",
 	       __FUNCTION__,
-	       chtype, chunk_flags, tsn);
+	       chtype, chunk_flags, tsn, ntohl(protocol_id));
 
 	if ((size_t)chk_length == clen) {
 		/*
