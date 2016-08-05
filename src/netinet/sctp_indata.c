@@ -1644,11 +1644,12 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	chk = NULL;
 	if (chtype == SCTP_IDATA) {
 		nch = (struct sctp_idata_chunk *)sctp_m_getptr(*m, offset,
-							     sizeof(struct sctp_idata_chunk), (uint8_t *) &chunk_buf);
+		                                               sizeof(struct sctp_idata_chunk), (uint8_t *)&chunk_buf);
 		ch = (struct sctp_data_chunk *)nch;
 		clen = sizeof(struct sctp_idata_chunk);
 		tsn = ntohl(ch->dp.tsn);
 		msg_id = ntohl(nch->dp.msg_id);
+		protocol_id = nch->dp.ppid_fsn.protocol_id;
 		if (ch->ch.chunk_flags & SCTP_DATA_FIRST_FRAG)
 			fsn = 0;
 		else
@@ -1656,8 +1657,9 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		old_data = 0;
 	} else {
 		ch = (struct sctp_data_chunk *)sctp_m_getptr(*m, offset,
-							     sizeof(struct sctp_data_chunk), (uint8_t *) &chunk_buf);
+		                                             sizeof(struct sctp_data_chunk), (uint8_t *)&chunk_buf);
 		tsn = ntohl(ch->dp.tsn);
+		protocol_id = ch->dp.protocol_id;
 		clen = sizeof(struct sctp_data_chunk);
 		fsn = tsn;
 		msg_id = (uint32_t)(ntohs(ch->dp.stream_sequence));
@@ -1683,7 +1685,6 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	if ((chunk_flags & SCTP_DATA_SACK_IMMEDIATELY) == SCTP_DATA_SACK_IMMEDIATELY) {
 		asoc->send_sack = 1;
 	}
-	protocol_id = ch->dp.protocol_id;
 	ordered = ((chunk_flags & SCTP_DATA_UNORDERED) == 0);
 	if (SCTP_BASE_SYSCTL(sctp_logging_level) & SCTP_MAP_LOGGING_ENABLE) {
 		sctp_log_map(tsn, asoc->cumulative_tsn, asoc->highest_tsn_inside_map, SCTP_MAP_TSN_ENTERS);
