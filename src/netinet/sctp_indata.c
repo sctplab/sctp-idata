@@ -1094,7 +1094,7 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	control = TAILQ_FIRST(&strm->uno_inqueue);
 	printf("%s -- control:%p, fsn_inc:0x%x\n",
 	       __FUNCTION__,
-	       control, control->fsn_included);
+	       control, control ? control->fsn_included : 0);
 
 	if ((control) &&
 	    (asoc->idata_supported == 0)) {
