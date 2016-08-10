@@ -143,7 +143,8 @@ set testcases = (sctp-idata-01 \
                  sctp-idata-113 \
                  sctp-idata-114 \
                  sctp-idata-115 \
-                 sctp-idata-116 )
+                 sctp-idata-116 \
+                 sctp-idata-117 )
 
 set rootdir = `/usr/bin/dirname $0`
 set passed = 0
@@ -167,7 +168,7 @@ foreach testcase ($testcases)
   endif
   printf "\033[33m%10s\033[0m" "RUNNING"
   if (-f ${rootdir}/${testcase}.pkt) then
-    $packetdrill ${rootdir}/${testcase}.pkt >& /dev/null
+    $packetdrill --tolerance_usecs=75000 ${rootdir}/${testcase}.pkt >& /dev/null
     set result = $status
     set found = 1
   else
