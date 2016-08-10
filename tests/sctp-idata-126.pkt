@@ -57,21 +57,21 @@
 +0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
                                            sinfo_ssn=...,
                                            sinfo_flags=SCTP_UNORDERED,
-                                           sinfo_ppid=htonl(2),
-                                           sinfo_context=0,
-                                           sinfo_timetolive=0,
-                                           sinfo_tsn=2,
-                                           sinfo_cumtsn=...,
-                                           sinfo_assoc_id=...}, MSG_EOR) = 2011
-+0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
-                                           sinfo_ssn=...,
-                                           sinfo_flags=SCTP_UNORDERED,
                                            sinfo_ppid=htonl(1),
                                            sinfo_context=0,
                                            sinfo_timetolive=0,
                                            sinfo_tsn=1,
                                            sinfo_cumtsn=...,
                                            sinfo_assoc_id=...}, MSG_EOR) = 1000
++0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
+                                           sinfo_ssn=...,
+                                           sinfo_flags=SCTP_UNORDERED,
+                                           sinfo_ppid=htonl(2),
+                                           sinfo_context=0,
+                                           sinfo_timetolive=0,
+                                           sinfo_tsn=2,
+                                           sinfo_cumtsn=...,
+                                           sinfo_assoc_id=...}, MSG_EOR) = 2011
 // Tear down the association
 +0.0 < sctp: SHUTDOWN[flgs=0, cum_tsn=0]
 +0.0 > sctp: SHUTDOWN_ACK[flgs=0]
