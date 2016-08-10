@@ -145,7 +145,18 @@ set testcases = (sctp-idata-01 \
                  sctp-idata-115 \
                  sctp-idata-116 \
                  sctp-idata-117 \
-                 sctp-idata-118 )
+                 sctp-idata-118 \
+                 sctp-idata-119 \
+                 sctp-idata-121 \
+                 sctp-idata-122 \
+                 sctp-idata-123 \
+                 sctp-idata-124 \
+                 sctp-idata-125 \
+                 sctp-idata-126 \
+                 sctp-idata-127 \
+                 sctp-idata-128 \
+                 sctp-idata-129 \
+                 sctp-idata-130 )
 
 set rootdir = `/usr/bin/dirname $0`
 set passed = 0

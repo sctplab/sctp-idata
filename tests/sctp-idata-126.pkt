@@ -1,0 +1,79 @@
+//
+// Copyright (c) 2016 Michael Tuexen
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+// LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+// OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+// SUCH DAMAGE.
+//
+
+--tolerance_usecs=75000
+
+ 0.0 `sysctl -w net.inet.sctp.ecn_enable=0`
++0.0 `sysctl -w net.inet.sctp.pr_enable=0`
++0.0 `sysctl -w net.inet.sctp.asconf_enable=0`
++0.0 `sysctl -w net.inet.sctp.auth_enable=0`
++0.0 `sysctl -w net.inet.sctp.reconfig_enable=0`
++0.0 `sysctl -w net.inet.sctp.nrsack_enable=0`
++0.0 `sysctl -w net.inet.sctp.pktdrop_enable=0`
++0.0 socket(..., SOCK_STREAM, IPPROTO_SCTP) = 3
+// Check the handshake with en empty(!) cookie
++0.0 bind(3, ..., ...) = 0
++0.0 listen(3, 1) = 0
++0.0 < sctp: INIT[flgs=0, tag=1, a_rwnd=1500, os=1, is=1, tsn=1]
++0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=..., os=..., is=..., tsn=1,
+                      STATE_COOKIE[len=..., val=...]]
++0.1 < sctp: COOKIE_ECHO[flgs=0, len=..., val=...]
++0.0 > sctp: COOKIE_ACK[flgs=0]
++0.0 accept(3, ..., ...) = 4
++0.0 close(3) = 0
++0.0 fcntl(4, F_GETFL) = 0x2 (flags O_RDWR)
++0.0 fcntl(4, F_SETFL, O_RDWR|O_NONBLOCK) = 0
+// Two unordered messages, a complete followed by a fragmented: 2-1-3
++0.0 < sctp: DATA[flgs=UB, len=1017, tsn=2, sid=0, ssn=0, ppid=2]
++0.0 > sctp: SACK[flgs=0, cum_tsn=0, a_rwnd=..., gaps=[2:2], dups=[]]
++0.0 < sctp: DATA[flgs=UBE, len=1016, tsn=1, sid=0, ssn=0, ppid=1]
++0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[], dups=[]]
++0.0 < sctp: DATA[flgs=UE, len=1026, tsn=3, sid=0, ssn=0, ppid=2]
++0.2 > sctp: SACK[flgs=0, cum_tsn=3, a_rwnd=..., gaps=[], dups=[]]
+// Check reassembly by looking the length.
++0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
+                                           sinfo_ssn=...,
+                                           sinfo_flags=SCTP_UNORDERED,
+                                           sinfo_ppid=htonl(1),
+                                           sinfo_context=0,
+                                           sinfo_timetolive=0,
+                                           sinfo_tsn=1,
+                                           sinfo_cumtsn=...,
+                                           sinfo_assoc_id=...}, MSG_EOR) = 1000
++0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
+                                           sinfo_ssn=...,
+                                           sinfo_flags=SCTP_UNORDERED,
+                                           sinfo_ppid=htonl(2),
+                                           sinfo_context=0,
+                                           sinfo_timetolive=0,
+                                           sinfo_tsn=2,
+                                           sinfo_cumtsn=...,
+                                           sinfo_assoc_id=...}, MSG_EOR) = 2022
+// Tear down the association
++0.0 < sctp: SHUTDOWN[flgs=0, cum_tsn=0]
++0.0 > sctp: SHUTDOWN_ACK[flgs=0]
++0.0 < sctp: SHUTDOWN_COMPLETE[flgs=0]
++0.0 close(4) = 0
