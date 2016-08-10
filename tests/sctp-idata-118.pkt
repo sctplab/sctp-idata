@@ -55,24 +55,7 @@
 +0.0 > sctp: SACK[flgs=0, cum_tsn=3, a_rwnd=..., gaps=[], dups=[]]
 +0.0 < sctp: DATA[flgs=UE, len=1036, tsn=4, sid=0, ssn=0, ppid=2]
 +0.2 > sctp: SACK[flgs=0, cum_tsn=4, a_rwnd=..., gaps=[], dups=[]]
-//+0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
-//                                           sinfo_ssn=...,
-//                                           sinfo_flags=SCTP_UNORDERED,
-//                                           sinfo_ppid=htonl(2),
-//                                           sinfo_context=0,
-//                                           sinfo_timetolive=0,
-//                                           sinfo_tsn=5,
-//                                           sinfo_cumtsn=...,
-//                                           sinfo_assoc_id=...}, MSG_EOR) = 2800
-//+0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
-//                                           sinfo_ssn=...,
-//                                           sinfo_flags=SCTP_UNORDERED,
-//                                           sinfo_ppid=htonl(1),
-//                                           sinfo_context=0,
-//                                           sinfo_timetolive=0,
-//                                           sinfo_tsn=3,
-//                                           sinfo_cumtsn=...,
-//                                           sinfo_assoc_id=...}, MSG_EOR) = 2800
+// Check reassembly by looking the length.
 +0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
                                            sinfo_ssn=...,
                                            sinfo_flags=SCTP_UNORDERED,
