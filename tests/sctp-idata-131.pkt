@@ -50,6 +50,7 @@
 +0.0 fcntl(4, F_GETFL) = 0x2 (flags O_RDWR)
 +0.0 fcntl(4, F_SETFL, O_RDWR|O_NONBLOCK) = 0
 
+// Receive the first complete fragmented unordered user message
 +0.0 < sctp: DATA[flgs=UB, len=1016, tsn=1, sid=0, ssn=0, ppid=1]
 +0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=..., gaps=[], dups=[]]
 +0.0 < sctp: DATA[flgs=UE, len=1016, tsn=2, sid=0, ssn=0, ppid=1]
@@ -62,14 +63,19 @@
                                            sinfo_tsn=1,
                                            sinfo_cumtsn=...,
                                            sinfo_assoc_id=...}, MSG_EOR) = 2000
+// Receive the last fragment of the second unordered user message
 +0.0 < sctp: DATA[flgs=UE, len=1016, tsn=4, sid=0, ssn=0, ppid=2]
 +0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[2:2], dups=[]]
+// Receive the third complete fragmented unordered user message
 +0.1 < sctp: DATA[flgs=UB, len=1013, tsn=5, sid=0, ssn=0, ppid=3]
 +0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[2:3], dups=[]]
 +0.1 < sctp: DATA[flgs=UE, len=1016, tsn=6, sid=0, ssn=0, ppid=3]
 +0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[2:4], dups=[]]
+// ??? Why isn't the third user message ready for delivery at this point of time?
+// Receive the first fragtment of the fourth unordered user message
 +0.1 < sctp: DATA[flgs=UB, len=1016, tsn=7, sid=0, ssn=0, ppid=4]
 +0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[2:5], dups=[]]
+// Now abandon the second user message and receive the last fragment of the fourth unordered user message
 +0.1 < sctp: FORWARD_TSN[cum_tsn=4, ids=[]];
              DATA[flgs=UE, len=1016, tsn=8, sid=0, ssn=0, ppid=4]
 +0.2 > sctp: SACK[flgs=0, cum_tsn=8, a_rwnd=..., gaps=[], dups=[]]
@@ -82,6 +88,7 @@
                                            sinfo_tsn=5,
                                            sinfo_cumtsn=...,
                                            sinfo_assoc_id=...}, MSG_EOR) = 2000
+// ??? Why isn't the fourth user message ready for delivery at this time?
 +0.0 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
                                            sinfo_ssn=...,
                                            sinfo_flags=SCTP_UNORDERED,
