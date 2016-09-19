@@ -1,0 +1,88 @@
+//
+// Copyright (c) 2016 Michael Tuexen
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+// LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+// OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+// SUCH DAMAGE.
+//
+
+--tolerance_usecs=75000
+
+ 0.0 `sysctl -w net.inet.sctp.ecn_enable=0`
++0.0 `sysctl -w net.inet.sctp.pr_enable=1`
++0.0 `sysctl -w net.inet.sctp.asconf_enable=0`
++0.0 `sysctl -w net.inet.sctp.auth_enable=0`
++0.0 `sysctl -w net.inet.sctp.reconfig_enable=0`
++0.0 `sysctl -w net.inet.sctp.nrsack_enable=0`
++0.0 `sysctl -w net.inet.sctp.pktdrop_enable=0`
+
++0.0 socket(..., SOCK_STREAM, IPPROTO_SCTP) = 3
++0.0 setsockopt(3, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, [2], 4) = 0
++0.0 setsockopt(3, IPPROTO_SCTP, SCTP_INTERLEAVING_SUPPORTED, {assoc_value=1}, 8) = 0
++0.0 bind(3, ..., ...) = 0
++0.0 listen(3, 1) = 0
++0.0 < sctp: INIT[flgs=0, tag=1, a_rwnd=1500, os=1, is=1, tsn=1,
+                  FORWARD_TSN_SUPPORTED[], SUPPORTED_EXTENSIONS[types=[I_DATA, I_FORWARD_TSN]]]
++0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=..., os=..., is=..., tsn=1,
+                      FORWARD_TSN_SUPPORTED[],
+                      SUPPORTED_EXTENSIONS[types=[FORWARD_TSN, I_FORWARD_TSN, I_DATA]],
+                      STATE_COOKIE[len=..., val=...]]
++0.1 < sctp: COOKIE_ECHO[flgs=0, len=..., val=...]
++0.0 > sctp: COOKIE_ACK[flgs=0]
++0.0 accept(3, ..., ...) = 4
++0.0 close(3) = 0
++0.0 fcntl(4, F_GETFL) = 0x2 (flags O_RDWR)
++0.0 fcntl(4, F_SETFL, O_RDWR|O_NONBLOCK) = 0
+// Assume that the first user message is dropped.
+// Receive than the second complete fragmented unordered user message
++0.0 < sctp: I_DATA[flgs=UB, len=1020, tsn=3, sid=0, mid=1, ppid=2]
++0.0 > sctp: SACK[flgs=0, cum_tsn=0, a_rwnd=..., gaps=[3:3], dups=[]]
++0.0 < sctp: I_DATA[flgs=UE, len=1020, tsn=4, sid=0, mid=1, fsn=1]
++0.0 > sctp: SACK[flgs=0, cum_tsn=0, a_rwnd=..., gaps=[3:4], dups=[]]
++0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
+                                           sinfo_ssn=...,
+                                           sinfo_flags=SCTP_UNORDERED,
+                                           sinfo_ppid=htonl(2),
+                                           sinfo_context=0,
+                                           sinfo_timetolive=0,
+                                           sinfo_tsn=3,
+                                           sinfo_cumtsn=...,
+                                           sinfo_assoc_id=...}, MSG_EOR) = 2000
+// Receive a third message
++0.0 < sctp: I_DATA[flgs=UB, len=1020, tsn=5, sid=0, mid=2, ppid=3]
++0.0 > sctp: SACK[flgs=0, cum_tsn=0, a_rwnd=..., gaps=[3:5], dups=[]]
++0.1 < sctp: I_FORWARD_TSN[cum_tsn=2, ids=[]];
+             I_DATA[flgs=UE, len=1020, tsn=6, sid=0, mid=2, fsn=1]
++0.2 > sctp: SACK[flgs=0, cum_tsn=6, a_rwnd=..., gaps=[], dups=[]]
++0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
+                                           sinfo_ssn=...,
+                                           sinfo_flags=SCTP_UNORDERED,
+                                           sinfo_ppid=htonl(3),
+                                           sinfo_context=0,
+                                           sinfo_timetolive=0,
+                                           sinfo_tsn=5,
+                                           sinfo_cumtsn=...,
+                                           sinfo_assoc_id=...}, MSG_EOR) = 2000
+// Tear down the association
++0.0 < sctp: SHUTDOWN[flgs=0, cum_tsn=0]
++0.0 > sctp: SHUTDOWN_ACK[flgs=0]
++0.0 < sctp: SHUTDOWN_COMPLETE[flgs=0]
++0.0 close(4) = 0
