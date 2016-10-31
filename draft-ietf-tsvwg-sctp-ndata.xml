@@ -94,11 +94,15 @@ envisioned for the transport of small signaling messages.
 Late in the design stage it was decided to add support for fragmentation and
 reassembly of larger messages with the thought that someday Session Initiation
 Protocol (SIP) <xref target='RFC3261'/> style signaling messages may also need
-to use SCTP and a single MTU sized message would be too small.
+to use SCTP and a single Maximum Transmission Unit (MTU) sized message would
+be too small.
 Unfortunately this design decision, though valid at the time, did not account
-for other applications which might send very large messages over SCTP.
-When such large messages are now sent over SCTP a form of sender side head of
-line blocking becomes created within the protocol.
+for other applications that might send large messages over SCTP.
+When such large messages are sent over SCTP as specified in
+<xref target='RFC4960'/> can result in a form of sender side head of line
+blocking (e.g., when the transmission of an urgent message is blocked from
+transmission because the sender has started transmission of another,
+possibly large, message).
 This head of line blocking is caused by the use of the Transmission Sequence
 Number (TSN) for three different purposes:
 <list style="numbers">
@@ -115,7 +119,7 @@ associations. If support for user message interleaving has been negotiated,
 several more schedulers are available.</t>
 <t>The following <xref target='RRwithoutMI'/> illustrates the
 behaviour of a round robin stream scheduler using DATA chunks.
-Please note that the use of such an scheduler implies late TSN assignment but
+Please note that the use of such a scheduler implies late TSN assignment but
 it can be used with an <xref target='RFC4960'/> compliant implementation not
 supporting user message interleaving.</t>
 <figure title='Round Robin Scheduler without User Message Interleaving'
@@ -146,11 +150,10 @@ new fields in its chunk header, the Fragment Sequence Number (FSN) and the
 Message Identifier (MID).
 Then the FSN is only used for reassembling all fragments having the same MID
 and ordering property. The TSN is used only for the reliable transfer in
-combination with SACK chunks.</t>
-<t>The MID is also used for ensuring ordered delivery, therefore replacing the
-stream sequence number.
-Therefore, the head of line blocking caused by the original design is
-avoided.</t>
+combination with Selective Acknowledgment (SACK) chunks.</t>
+<t>In addition, the MID is also used for ensuring ordered delivery instead
+of using the stream sequence number, which has been omitted from the I-DATA
+chunk.</t>
 <t>The following <xref target='RRwithMI'/> illustrates the behaviour
 of an interleaving round robin stream scheduler using I-DATA chunks.</t>
 <figure title='Round Robin Scheduler with User Message Interleaving'
@@ -177,10 +180,17 @@ of an interleaving round robin stream scheduler using I-DATA chunks.</t>
 <t>The support of the I-DATA chunk is negotiated during the association setup
 using the Supported Extensions Parameter as defined in
 <xref target='RFC5061'/>. If I-DATA support has been negotiated for an
-association I-DATA chunks are used for all user-messages and no DATA chunks.
+association I-DATA chunks are used for all user-messages.
+DATA chunks are not permitted when I-DATA support has been negotiated.
 It should be noted, that an SCTP implementation needs to support the
 coexistence of associations using DATA chunks and associations using I-DATA
 chunks.</t>
+<t>This document specifies in <xref target='interleaving'/> the user
+message interleaving by defining the I-DATA chunk, the procedures to use it
+and its interactions with other SCTP extensions.
+Multiple stream schedulers are defined in <xref target='scheduler'/>
+followed by describing in <xref target='api'/> an extension to the
+socket API for using what is specified in this document.</t>
 </section>
 
 <section title="Conventions">
@@ -191,7 +201,8 @@ document are to be interpreted as described in
 </section>
 </section>
 
-<section anchor='interleaving' title="User Message Interleaving">
+<section anchor='interleaving'
+         title="User Message Interleaving">
 <!-- Add a Motivation section -->
 <t>The interleaving of user messages is required for WebRTC Datachannels
 as specified in <xref target='I-D.ietf-rtcweb-data-channel'/>.</t>
@@ -280,7 +291,7 @@ Please note that the FSN is in "network byte order", a.k.a. Big Endian.</t>
 <t>This subsection describes how the support of the I-DATA chunk is negotiated
 and how the I-DATA chunk is used by the sender and receiver.</t>
 <section title='Negotiation'>
-<t>A sender MUST NOT send a I-DATA chunk unless both peers have indicated
+<t>A sender MUST NOT send an I-DATA chunk unless both peers have indicated
 its support of the I-DATA chunk type within the Supported
 Extensions Parameter as defined in <xref target='RFC5061'/>.
 If I-DATA support has been negotiated on an association, I-DATA chunks
@@ -288,7 +299,7 @@ MUST be used for all user messages and DATA-chunk MUST NOT be used.
 If I-DATA support has not been negotiated on an association, DATA chunks
 MUST be used for all user messages and I-DATA chunks MUST NOT be used.</t>
 <t>A sender MUST NOT use the I-DATA chunk unless the user
-has requested that use (e.g. via the socket API, see <xref target='api'/>).
+has requested that use (e.g. via the socket API, see <xref target='socket_options'/>).
 This constraint is made since usage of this chunk requires that the application
 be willing to interleave messages upon reception within an association.
 This is not the default choice within the socket API
@@ -318,7 +329,7 @@ support. For example, it is not possible to interleave multiple ordered
 or unordered user messages from the same stream.</t>
 <t>The sender MUST NOT be fragmenting more than one user message in any given
 stream at any time.
-At any time, a sender MAY fragment multiple user message, each of them on
+At any time, a sender MAY fragment multiple user messages, each of them on
 different streams.</t>
 <t>The sender MUST assign TSN's in a way that the receiver can make progress.
 One way to achieve this is to assign the later fragments of a user message
@@ -326,14 +337,14 @@ a higher TSN and send out the TSNs in sequence.</t>
 </section>
 
 <section title='Receiver Side Considerations'>
-<t>Upon reception of an SCTP packet containing a I-DATA chunk if
+<t>Upon reception of an SCTP packet containing an I-DATA chunk if
 the message needs to be reassembled, then the receiver MUST use the FSN
 for reassembly of the message and not the TSN. The receiver MUST NOT make
 any assumption about the TSN assignments of the sender.
 Note that a non-fragmented message is indicated by the fact that both the 'E'
 and 'B' bits are set.
-An ordered or unordered fragmented message is thus identified by not having
-both bits set.</t>
+A message (either ordered or unordered) may be identified as being fragmented
+by seeing that not both bits have been set.</t>
 </section>
 </section>
 
@@ -411,18 +422,18 @@ combination with user message interleaving.</t>
 <section title='SCTP Stream Reconfiguration Extension'>
 <t>When an association resets the SSN using the SCTP extension defined in
 <xref target='RFC6525'/>, the two counters (one for the ordered messages,
-one for the unordered messages) used for the MID MUST be reset to 0
-correspondingly.</t>
-<t>Since most schedulers, especially all schedulers when supporting user
+one for the unordered messages) used for the MID MUST be reset to 0.</t>
+<t>Since most schedulers, especially all schedulers supporting user
 message interleaving, require late TSN assignment, it should be noted that the
 implementation of <xref target='RFC6525'/> needs to handle this.</t>
 </section>
 </section>
 </section>
 
-<section title="Stream Schedulers">
+<section anchor='scheduler'
+         title="Stream Schedulers">
 <t>This section defines several stream schedulers.
-The streams schedulers may behave differently depending on whether user
+The stream schedulers may behave differently depending on whether user
 message interleaving has been negotiated for the association or not.
 The set of schedulers being implemented is implementation dependent.</t>
 <section anchor='sctp_ss_fcfs'
@@ -495,10 +506,10 @@ The list of these structures includes:
 <list style="hanging">
 <t hangText="struct sctp_sndrcvinfo">
 <vspace blankLines="0"/>
-Specified in Section 5.3.2 of <xref target='RFC6458'/> and being deprecated.</t>
+Specified in Section 5.3.2 of <xref target='RFC6458'/> and marked as deprecated.</t>
 <t hangText="struct sctp_extrcvinfo">
 <vspace blankLines="0"/>
-Specified in Section 5.3.3 of <xref target='RFC6458'/> and being deprecated.</t>
+Specified in Section 5.3.3 of <xref target='RFC6458'/> and marked as deprecated.</t>
 <t hangText="struct sctp_rcvinfo">
 <vspace blankLines="0"/>
 Specified in Section 5.3.5 of <xref target='RFC6458'/>.</t>
@@ -514,7 +525,8 @@ where both peers support the I-DATA chunk,
 SCTP_ASSOC_SUPPORTS_INTERLEAVING should be listed in the sac_info field.</t>
 </section>
 
-<section title="Socket Options">
+<section anchor='socket_options'
+         title="Socket Options">
 
 <texttable>
 <ttcol align='left'>option name</ttcol>
@@ -659,9 +671,9 @@ ignored when the scheduler does not need additional information.</t>
 </section>
 </section>
 <section title="Explicit EOR Marking">
-<t>Using explicit EOR marking for an SCTP association supporting user message
-interleaving allows the user to interleave the sending of user messages on
-different streams.</t>
+<t>Using explicit End of Record (EOR) marking for an SCTP association
+supporting user message interleaving allows the user to interleave the sending
+of user messages on different streams.</t>
 </section>
 </section>
 
@@ -711,7 +723,10 @@ table:</t>
 <section title="Security Considerations">
 <t>This document does not add any additional security considerations
 in addition to the ones given in <xref target='RFC4960'/> and
-<xref target='RFC6458'/>.</t>
+<xref target='RFC6458'/>./<t>
+<t>It should be noted that the application has to consent that it is willing
+to do the more complex reassembly support required for user message
+interleaving.</t>
 </section>
 
 <section title='Acknowledgments'>
