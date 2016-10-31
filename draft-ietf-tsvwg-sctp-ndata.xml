@@ -75,13 +75,15 @@
 <abstract>
 <t>The Stream Control Transmission Protocol (SCTP) is a message oriented
 transport protocol supporting arbitrary large user messages.
-However, the sender can not interleave different user messages which
-causes head of line blocking at the sender side.
-To overcome this limitation, this document adds a new data chunk to SCTP.</t>
-<t>Whenever an SCTP sender is allowed to send a user data, it can possibly
-choose from multiple outgoing SCTP streams. Multiple ways for this selection,
-called stream schedulers, are defined. Some of them don't require the support
-of user message interleaving, some do.</t>
+This document adds a new data chunk to SCTP.
+This allows a sender to interleave different user messages that
+would otherwise result in head of line blocking at the sender.</t>
+
+<t>Whenever an SCTP sender is allowed to send user data, it may choose from
+multiple outgoing SCTP streams. Multiple ways for performing this selection,
+called stream schedulers, are defined.
+A stream scheduler can choose to either implement, or not implement,
+user message interleaving.</t>
 </abstract>
 
 </front>
@@ -206,6 +208,14 @@ document are to be interpreted as described in
 <!-- Add a Motivation section -->
 <t>The interleaving of user messages is required for WebRTC Datachannels
 as specified in <xref target='I-D.ietf-rtcweb-data-channel'/>.</t>
+<t>An SCTP implementation supporting user message interleaving is REQUIRED
+to support the coexistence of associations using DATA chunks and associations
+using I-DATA chunks.
+If an SCTP implementation supports user message interleaving and the extension
+described in <xref target='RFC3758'/> or <xref target='RFC6525'/>,
+it is REQUIRED to implement the corresponding changes specified in
+<xref target='interactions'/>.</t>
+
 <section title="The I-DATA Chunk supporting User Message Interleaving">
 <t>The following <xref target='i_data_chunk'/> shows the
 new I-DATA chunk allowing user messages interleaving.</t>
@@ -348,7 +358,8 @@ by seeing that not both bits have been set.</t>
 </section>
 </section>
 
-<section title='Interaction with other SCTP Extensions'>
+<section anchor='interactions'
+         title='Interaction with other SCTP Extensions'>
 <t>The usage of the I-DATA chunk might interfere with other SCTP extensions.
 Future SCTP extensions MUST describe if and how they interfere with the
 usage of I-DATA chunks. For the SCTP extensions already defined when this
@@ -723,7 +734,7 @@ table:</t>
 <section title="Security Considerations">
 <t>This document does not add any additional security considerations
 in addition to the ones given in <xref target='RFC4960'/> and
-<xref target='RFC6458'/>./<t>
+<xref target='RFC6458'/>.</t>
 <t>It should be noted that the application has to consent that it is willing
 to do the more complex reassembly support required for user message
 interleaving.</t>
