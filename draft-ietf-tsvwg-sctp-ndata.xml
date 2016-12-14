@@ -100,10 +100,10 @@ to use SCTP and a single Maximum Transmission Unit (MTU) sized message would
 be too small.
 Unfortunately this design decision, though valid at the time, did not account
 for other applications that might send large messages over SCTP.
-When such large messages are sent over SCTP as specified in
+The sending of such large messages over SCTP as specified in
 <xref target='RFC4960'/> can result in a form of sender side head of line
 blocking (e.g., when the transmission of an urgent message is blocked from
-transmission because the sender has started transmission of another,
+transmission because the sender has started the transmission of another,
 possibly large, message).
 This head of line blocking is caused by the use of the Transmission Sequence
 Number (TSN) for three different purposes:
@@ -145,13 +145,13 @@ supporting user message interleaving.</t>
                                +-------+
 </artwork>
 </figure>
-<t>This document describes a new Data chunk called I-DATA.
-This chunk incorporates all the flags and fields except the Stream Sequence
-Number (SSN) and properties of the current SCTP Data chunk but also adds two
-new fields in its chunk header, the Fragment Sequence Number (FSN) and the
-Message Identifier (MID).
-Then the FSN is only used for reassembling all fragments having the same MID
-and ordering property. The TSN is used only for the reliable transfer in
+<t>This document describes a new data chunk called I-DATA.
+This chunk incorporates the properties of the current SCTP DATA chunk,
+all the flags and fields except the Stream Sequence Number (SSN),
+but also adds two new fields in its chunk header, the Fragment Sequence
+Number (FSN) and the Message Identifier (MID).
+The FSN is only used for reassembling all fragments having the same MID
+and ordering property. The TSN is only used for the reliable transfer in
 combination with Selective Acknowledgment (SACK) chunks.</t>
 <t>In addition, the MID is also used for ensuring ordered delivery instead
 of using the stream sequence number, which has been omitted from the I-DATA
@@ -187,7 +187,7 @@ DATA chunks are not permitted when I-DATA support has been negotiated.
 It should be noted, that an SCTP implementation needs to support the
 coexistence of associations using DATA chunks and associations using I-DATA
 chunks.</t>
-<t>This document specifies in <xref target='interleaving'/> the user
+<t>In <xref target='interleaving'/> this document specifies the user
 message interleaving by defining the I-DATA chunk, the procedures to use it
 and its interactions with other SCTP extensions.
 Multiple stream schedulers are defined in <xref target='scheduler'/>
@@ -218,7 +218,7 @@ it is REQUIRED to implement the corresponding changes specified in
 
 <section title="The I-DATA Chunk supporting User Message Interleaving">
 <t>The following <xref target='i_data_chunk'/> shows the
-new I-DATA chunk allowing user messages interleaving.</t>
+new I-DATA chunk allowing user message interleaving.</t>
 <figure title='I-DATA chunk format'
         anchor='i_data_chunk'>
 <artwork>
@@ -244,8 +244,8 @@ new I-DATA chunk allowing user messages interleaving.</t>
 
 <t>The only differences between the I-DATA chunk in
 <xref target='i_data_chunk'/> and the DATA chunk defined in
-<xref target='RFC4960'/> and <xref target='RFC7053'/> is the
-addition of the new Message Identifier (MID) and
+<xref target='RFC4960'/> and <xref target='RFC7053'/> are the
+addition of the new Message Identifier (MID) and the new
 Fragment Sequence Number (FSN) and the
 removal of the Stream Sequence Number (SSN).
 The length of the I-DATA chunk header is 20 bytes, which is 4 bytes more than
@@ -270,7 +270,7 @@ All counters are independent and initially 0.
 They are incremented by 1 for each user message.
 Please note that the serial number arithmetic defined in
 <xref target='RFC1982'/> using SERIAL_BITS = 32 applies.
-Therefore the sender MUST NOT have more than 2**31 - 1 ordered messages for
+Therefore, the sender MUST NOT have more than 2**31 - 1 ordered messages for
 each outgoing stream in flight and MUST NOT have more than 2**31 - 1 unordered
 messages for each outgoing stream in flight.
 <!-- For ordered user messages, the lower 16 bit of the MID can be used as a SSN if
@@ -291,7 +291,7 @@ The last fragment of a message MUST have the 'E' bit set.
 Note that the FSN MAY wrap completely multiple times allowing arbitrary large
 user messages. For the FSN the serial number arithmetic defined in
 <xref target='RFC1982'/> applies with SERIAL_BITS = 32.
-Therefore a sender MUST NOT have more than 2**31 - 1 fragments of a single user
+Therefore, a sender MUST NOT have more than 2**31 - 1 fragments of a single user
 message in flight.
 Please note that the FSN is in "network byte order", a.k.a. Big Endian.</t>
 </list></t>
@@ -304,25 +304,27 @@ and how the I-DATA chunk is used by the sender and receiver.</t>
 <t>A sender MUST NOT send an I-DATA chunk unless both peers have indicated
 its support of the I-DATA chunk type within the Supported
 Extensions Parameter as defined in <xref target='RFC5061'/>.
-If I-DATA support has been negotiated on an association, I-DATA chunks
-MUST be used for all user messages and DATA-chunk MUST NOT be used.
-If I-DATA support has not been negotiated on an association, DATA chunks
+If I-DATA support has been negotiated for an association, I-DATA chunks
+MUST be used for all user messages and DATA-chunks MUST NOT be used.
+If I-DATA support has not been negotiated for an association, DATA chunks
 MUST be used for all user messages and I-DATA chunks MUST NOT be used.</t>
-<t>A sender MUST NOT use the I-DATA chunk unless the user
-has requested that use (e.g. via the socket API, see <xref target='socket_options'/>).
-This constraint is made since usage of this chunk requires that the application
-be willing to interleave messages upon reception within an association.
+<t>A sender MUST NOT use the I-DATA chunk unless the user has requested its use
+(e.g. via the socket API, see <xref target='socket_options'/>).
+This constraint is made since the usage of this chunk requires that the
+application is willing to interleave messages upon reception within an
+association.
 This is not the default choice within the socket API
 (see <xref target='RFC6458'/>) thus the user MUST indicate support to the
 protocol of the reception of completely interleaved messages.
 Note that for stacks that do not implement <xref target='RFC6458'/> they may
 use other methods to indicate interleaved message support and thus enable the
-usage of the I-DATA chunk, the key is that the stack MUST know the
-application has indicated its choice in wanting to use the extension.</t>
+usage of the I-DATA chunk. The crucial point is that the SCTP stack MUST know
+that the application has indicated its choice in wanting to use the
+extension.</t>
 </section>
 
 <section title='Sender Side Considerations'>
-<t>Sender side usage of the I-DATA chunk is quite simple. Instead
+<t>The sender side usage of the I-DATA chunk is quite simple. Instead
 of using the TSN for fragmentation purposes, the sender uses the
 new FSN field to indicate which fragment number is being sent.
 The first fragment MUST have the 'B' bit set.
@@ -341,20 +343,21 @@ or unordered user messages from the same stream.</t>
 stream at any time.
 At any time, a sender MAY fragment multiple user messages, each of them on
 different streams.</t>
-<t>The sender MUST assign TSN's in a way that the receiver can make progress.
-One way to achieve this is to assign the later fragments of a user message
-a higher TSN and send out the TSNs in sequence.</t>
+<t>The sender MUST assign TSNs in a way that the receiver can make progress.
+One way to achieve this is to assign a higher TSN to the later fragments of
+a user message and send out the TSNs in sequence.</t>
 </section>
 
 <section title='Receiver Side Considerations'>
-<t>Upon reception of an SCTP packet containing an I-DATA chunk if
-the message needs to be reassembled, then the receiver MUST use the FSN
+<t>Upon reception of an SCTP packet containing an I-DATA chunk whose
+user message needs to be reassembled, the receiver MUST use the FSN
 for reassembly of the message and not the TSN. The receiver MUST NOT make
 any assumption about the TSN assignments of the sender.
+<!-- FIXME: Is this really clear? -->
 Note that a non-fragmented message is indicated by the fact that both the 'E'
 and 'B' bits are set.
 A message (either ordered or unordered) may be identified as being fragmented
-by seeing that not both bits have been set.</t>
+whose 'E' and 'B' bits are not set both.</t>
 </section>
 </section>
 
@@ -433,7 +436,7 @@ combination with user message interleaving.</t>
 <section title='SCTP Stream Reconfiguration Extension'>
 <t>When an association resets the SSN using the SCTP extension defined in
 <xref target='RFC6525'/>, the two counters (one for the ordered messages,
-one for the unordered messages) used for the MID MUST be reset to 0.</t>
+one for the unordered messages) used for the MIDs MUST be reset to 0.</t>
 <t>Since most schedulers, especially all schedulers supporting user
 message interleaving, require late TSN assignment, it should be noted that the
 implementation of <xref target='RFC6525'/> needs to handle this.</t>
@@ -448,8 +451,8 @@ The stream schedulers may behave differently depending on whether user
 message interleaving has been negotiated for the association or not.
 The set of schedulers being implemented is implementation dependent.</t>
 <section anchor='sctp_ss_fcfs'
-         title='First Come First Serve (SCTP_SS_FCFS)'>
-<t>The simple first-come, first-serve scheduler of user messages is used.
+         title='First Come First Served (SCTP_SS_FCFS)'>
+<t>The simple first-come, first-served scheduler of user messages is used.
 It just passes through the messages in the order in which they have been
 delivered by the application. No modification of the order is done at all.
 The usage of user message interleaving does not affect the sending of
@@ -465,8 +468,8 @@ non-empty stream queues.</t>
 </section>
 <section anchor='sctp_ss_rr_pkt'
          title='Round Robin Scheduler per Packet (SCTP_SS_RR_PKT)'>
-<t>This is a round-robin scheduler but bundles only DATA or I-DATA chunks
-referring to the same stream in a packet.
+<t>This is a round-robin scheduler but only DATA or I-DATA chunks
+referring to the same stream are bundled in a packet.
 This minimizes head-of-line blocking when a packet is lost because only a
 single stream is affected.</t>
 </section>
@@ -475,7 +478,7 @@ single stream is affected.</t>
 <t>Scheduling of user messages with strict priorities is used.
 The priority is configurable per outgoing SCTP stream. Streams having a higher
 priority will be scheduled first and when multiple streams have the same
-priority, the scheduling between them is implementation specific.
+priority, the scheduling between them is implementation dependent.
 When using user message interleaving, the sending of lower priority user
 messages will not block the sending of higher priority user messages.</t>
 </section>
@@ -483,8 +486,8 @@ messages will not block the sending of higher priority user messages.</t>
          title='Fair Bandwidth Scheduler (SCTP_SS_FB)'>
 <t>A fair bandwidth distribution between the streams is used.
 This scheduler considers the lengths of the messages of each stream and
-schedules them in a certain way to maintain an equal bandwidth for all
-streams. The details are implementation specific.
+schedules them in a specific way to maintain an equal bandwidth for all
+streams. The details are implementation dependent.
 Using user message interleaving allows for a better realization of the
 fair bandwidth usage.</t>
 </section>
@@ -493,8 +496,8 @@ fair bandwidth usage.</t>
 <t>A weighted fair queueing scheduler between the streams is used. The weight is
 configurable per outgoing SCTP stream.
 This scheduler considers the lengths of the messages of each stream and
-schedules them in a certain way to use the bandwidth according to the given
-weights. The details are implementation specific.
+schedules them in a specific way to use the bandwidth according to the given
+weights. The details are implementation dependent.
 Using user message interleaving allows for a better realization of the
 bandwidth usage according to the given weights.</t>
 <t>This scheduler in combination with user message interleaving is used for
@@ -673,7 +676,7 @@ Holds the identifier for the association of which the scheduler should
 be changed. The special SCTP_{FUTURE|CURRENT|ALL}_ASSOC can also be
 used. This parameter is ignored for one-to-one style sockets.</t>
 <t hangText="stream_id:">
-Holds the stream id for the stream for which additional information has
+Holds the stream id of the stream for which additional information has
 to be provided.</t>
 <t hangText="stream_value:">
 The meaning of this field depends on the scheduler specified. It is
