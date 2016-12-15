@@ -75,7 +75,7 @@
 <abstract>
 <t>The Stream Control Transmission Protocol (SCTP) is a message oriented
 transport protocol supporting arbitrary large user messages.
-This document adds a new data chunk to SCTP.
+This document adds a new chunk to SCTP for carrying payload data.
 This allows a sender to interleave different user messages that
 would otherwise result in head of line blocking at the sender.</t>
 
@@ -145,7 +145,7 @@ supporting user message interleaving.</t>
                                +-------+
 </artwork>
 </figure>
-<t>This document describes a new data chunk called I-DATA.
+<t>This document describes a new chunk carrying payload data called I-DATA.
 This chunk incorporates the properties of the current SCTP DATA chunk,
 all the flags and fields except the Stream Sequence Number (SSN),
 but also adds two new fields in its chunk header, the Fragment Sequence
@@ -191,8 +191,8 @@ chunks.</t>
 message interleaving by defining the I-DATA chunk, the procedures to use it
 and its interactions with other SCTP extensions.
 Multiple stream schedulers are defined in <xref target='scheduler'/>
-followed by describing in <xref target='api'/> an extension to the
-socket API for using what is specified in this document.</t>
+followed in <xref target='api'/> by describing an extension to the socket API
+for using what is specified in this document.</t>
 </section>
 
 <section title="Conventions">
@@ -314,8 +314,8 @@ This constraint is made since the usage of this chunk requires that the
 application is willing to interleave messages upon reception within an
 association.
 This is not the default choice within the socket API
-(see <xref target='RFC6458'/>) thus the user MUST indicate support to the
-protocol of the reception of completely interleaved messages.
+(see <xref target='RFC6458'/>) thus the user MUST indicate to the
+SCTP implementation its support for receiving completely interleaved messages.
 Note that for stacks that do not implement <xref target='RFC6458'/> they may
 use other methods to indicate interleaved message support and thus enable the
 usage of the I-DATA chunk. The crucial point is that the SCTP stack MUST know
@@ -376,7 +376,7 @@ The difference between the FORWARD-TSN and the I-FORWARD-TSN chunk is that
 the 16-bit Stream Sequence Number (SSN) has been replaced by the 32-bit Message
 Identifier (MID) and the largest skipped MID can also be provided for
 unordered messages.
-Therefore the principle applied to ordered message when using FORWARD-TSN
+Therefore, the principle applied to ordered message when using FORWARD-TSN
 chunks is applied to ordered and unordered messages when using I-FORWARD-TSN
 chunks.</t>
 <figure title='I-FORWARD-TSN chunk format'
@@ -714,7 +714,7 @@ This requires an additional line in the "Chunk Types" registry for SCTP:</t>
 <ttcol align='left'>ID Value</ttcol>
 <ttcol align='left'>Chunk Type</ttcol>
 <ttcol align='left'>Reference</ttcol>
-<c>64</c> <c>New DATA chunk (I-DATA)</c> <c>[RFCXXXX]</c>
+<c>64</c> <c>Payload Data supporting Interleaving (I-DATA)</c> <c>[RFCXXXX]</c>
 </texttable>
 <t>The registration table as defined in <xref target='RFC6096'/> for
 the chunk flags of this chunk type is initially given by the following
