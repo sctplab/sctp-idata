@@ -162,7 +162,7 @@ do
 -Tsy_call_t \
 -Tvop_t \
 -bad -bap -nbbb -nbc -br -nbs -c33 -cd33 -cdb -ce -ci4 -cli0 -d0 -di0 -ndj \
--ei -nfc1 -i8 -ip -l79 -lc77 -nlp -npcs -psl -sc -nsob -nv \
+-ei -nfc1 -i8 -ip -l79 -lc77 -nlp -npcs -psl -sc -nsob -nv -ta \
             $TMP $TMPBAK
         (wc -l "$i" | tr '\012' ' '; diff $TMPBAK $TMP | grep -cv '^[1-9]') |
             awk '{printf("%7.3f%% %s\n", 100 - 100 * $3 / 2 / ($1 + .1), $2)}'
