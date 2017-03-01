@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 309607 2016-12-06 10:21:25Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 313330 2017-02-06 08:49:57Z ae $");
 #endif
 
 #ifndef _NETINET_SCTP_OS_BSD_H_
@@ -40,7 +40,6 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 309607 2016-12-06 10:21:25Z t
 /*
  * includes
  */
-#include "opt_ipsec.h"
 #include "opt_compat.h"
 #include "opt_inet6.h"
 #include "opt_inet.h"
@@ -90,16 +89,8 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 309607 2016-12-06 10:21:25Z t
 #include <netinet/ip_icmp.h>
 #include <netinet/icmp_var.h>
 
-#ifdef IPSEC
-#include <netipsec/ipsec.h>
-#include <netipsec/key.h>
-#endif				/* IPSEC */
-
 #ifdef INET6
 #include <sys/domain.h>
-#ifdef IPSEC
-#include <netipsec/ipsec6.h>
-#endif
 #include <netinet/ip6.h>
 #include <netinet6/ip6_var.h>
 #include <netinet6/in6_pcb.h>
@@ -111,8 +102,8 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 309607 2016-12-06 10:21:25Z t
 #if defined(HAVE_SCTP_PEELOFF_SOCKOPT)
 #include <sys/file.h>
 #include <sys/filedesc.h>
-#endif
 
+#endif
 #if __FreeBSD_version >= 700000
 #include <netinet/ip_options.h>
 #endif
