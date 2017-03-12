@@ -47,10 +47,9 @@
   <organization>Ericsson</organization>
   <address>
     <postal>
-      <street>Hirsalantie 11</street>
-      <city>Jorvas</city>
-      <code> 02420 </code>
-      <country>Finland</country>
+      <street>Torshamnsgatan 21</street>
+      <city>164 80 Stockholm</city>
+      <country>Sweden</country>
     </postal>
     <email>Salvatore.Loreto@ericsson.com</email>
   </address>
@@ -598,7 +597,6 @@ Some implementations might therefore put some restrictions on setting
 combinations of these values.
 Since the default fragment interleave level is not 2, user message interleaving
 is disabled per default.</t>
-</t>
 </section>
 
 <section title="Get or Set the Stream Scheduler (SCTP_STREAM_SCHEDULER)">
