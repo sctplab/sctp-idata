@@ -74,7 +74,7 @@
 
 <abstract>
 <t>The Stream Control Transmission Protocol (SCTP) is a message oriented
-transport protocol supporting arbitrary large user messages.
+transport protocol supporting arbitrarily large user messages.
 This document adds a new chunk to SCTP for carrying payload data.
 This allows a sender to interleave different user messages that
 would otherwise result in head of line blocking at the sender.</t>
@@ -117,10 +117,11 @@ The protocol requires all fragments of a user message to have consecutive
 TSNs. Therefore it is impossible for the sender to interleave different
 user messages.</t>
 <t>This document also defines several stream schedulers for general SCTP
-associations. If support for user message interleaving has been negotiated,
-several more schedulers are available.</t>
-<t>The following <xref target='RRwithoutMI'/> illustrates the
-behaviour of a round robin stream scheduler using DATA chunks.
+associations. They can be used with and without user message interleaving
+being negotiated and possibly behave differently.</t>
+<t><xref target='RRwithoutMI'/> illustrates the behaviour of a round robin
+stream scheduler using DATA chunks when three streams with the Stream
+Identifiers (SIDs) 0, 1, and 2 are used.
 Please note that the use of such a scheduler implies late TSN assignment but
 it can be used with an <xref target='RFC4960'/> compliant implementation not
 supporting user message interleaving.</t>
@@ -156,8 +157,8 @@ combination with Selective Acknowledgment (SACK) chunks.</t>
 <t>In addition, the MID is also used for ensuring ordered delivery instead
 of using the stream sequence number, which has been omitted from the I-DATA
 chunk.</t>
-<t>The following <xref target='RRwithMI'/> illustrates the behaviour
-of an interleaving round robin stream scheduler using I-DATA chunks.</t>
+<t><xref target='RRwithMI'/> illustrates the behaviour of an interleaving
+round robin stream scheduler using I-DATA chunks.</t>
 <figure title='Round Robin Scheduler with User Message Interleaving'
         anchor='RRwithMI'>
 <artwork>
@@ -184,7 +185,7 @@ using the Supported Extensions Parameter as defined in
 <xref target='RFC5061'/>. If I-DATA support has been negotiated for an
 association I-DATA chunks are used for all user-messages.
 DATA chunks are not permitted when I-DATA support has been negotiated.
-It should be noted, that an SCTP implementation needs to support the
+It should be noted that an SCTP implementation needs to support the
 coexistence of associations using DATA chunks and associations using I-DATA
 chunks.</t>
 <t>In <xref target='interleaving'/> this document specifies the user
@@ -216,7 +217,7 @@ described in <xref target='RFC3758'/> or <xref target='RFC6525'/>,
 it is REQUIRED to implement the corresponding changes specified in
 <xref target='interactions'/>.</t>
 
-<section title="The I-DATA Chunk supporting User Message Interleaving">
+<section title="The I-DATA Chunk Supporting User Message Interleaving">
 <t>The following <xref target='i_data_chunk'/> shows the
 new I-DATA chunk allowing user message interleaving.</t>
 <figure title='I-DATA chunk format'
@@ -288,7 +289,7 @@ If the B bit is not set, this field contains the FSN.
 The FSN is used to enumerate all fragments of a single user message, starting
 from 0 and incremented by 1.
 The last fragment of a message MUST have the 'E' bit set.
-Note that the FSN MAY wrap completely multiple times allowing arbitrary large
+Note that the FSN MAY wrap completely multiple times allowing arbitrarily large
 user messages. For the FSN the serial number arithmetic defined in
 <xref target='RFC1982'/> applies with SERIAL_BITS = 32.
 Therefore, a sender MUST NOT have more than 2**31 - 1 fragments of a single user
@@ -413,7 +414,7 @@ This field is reserved.
 It MUST be set to 0 by the sender and MUST be ignored by the receiver.</t>
 <t hangText="U bit: 1 bit">
 <vspace blankLines="0"/>
-The U bit specifies if the Message Identifier of this entry refers
+The U bit specifies if the Message Identifier of this entry refers to
 unordered messages (U bit is set) or ordered messages (U bit is not set).</t>
 <t hangText="Message Identifier (MID): 32 bits (unsigned integer)">
 <vspace blankLines="0"/>
@@ -449,7 +450,7 @@ implementation of <xref target='RFC6525'/> needs to handle this.</t>
 <t>This section defines several stream schedulers.
 The stream schedulers may behave differently depending on whether user
 message interleaving has been negotiated for the association or not.
-The set of schedulers being implemented is implementation dependent.</t>
+An implementation MAY implement any subset of them.</t>
 <section anchor='sctp_ss_fcfs'
          title='First Come First Served (SCTP_SS_FCFS)'>
 <t>The simple first-come, first-served scheduler of user messages is used.
@@ -497,7 +498,11 @@ fair bandwidth usage.</t>
 configurable per outgoing SCTP stream.
 This scheduler considers the lengths of the messages of each stream and
 schedules them in a specific way to use the bandwidth according to the given
-weights. The details are implementation dependent.
+weights.
+If the weight of stream S1 is n times the weight of stream S2, the
+scheduler should assign to stream S1 n times the bandwidth it assigns to
+stream S2.
+The details are implementation dependent.
 Using user message interleaving allows for a better realization of the
 bandwidth usage according to the given weights.</t>
 <t>This scheduler in combination with user message interleaving is used for
@@ -557,7 +562,6 @@ SCTP_ASSOC_SUPPORTS_INTERLEAVING should be listed in the sac_info field.</t>
 of user message interleaving support for future associations.
 For existing associations it allows to query whether user message interleaving
 support was negotiated or not on a particular association.</t>
-<t>User message interleaving is disabled per default.</t>
 <t>This socket option uses IPPROTO_SCTP as its level and
 SCTP_INTERLEAVING_SUPPORTED as its name.
 It can be used with getsockopt() and setsockopt().
@@ -591,7 +595,10 @@ Please note that it does not allow the interleaving of ordered and unordered
 user messages on the same stream.
 Failure to set this option can possibly lead to application deadlock.
 Some implementations might therefore put some restrictions on setting
-combinations of these values.</t>
+combinations of these values.
+Since the default fragment interleave level is not 2, user message interleaving
+is disabled per default.</t>
+</t>
 </section>
 
 <section title="Get or Set the Stream Scheduler (SCTP_STREAM_SCHEDULER)">
@@ -751,6 +758,7 @@ Marcelo Ricardo Leitner,
 Karen E. Egede Nielsen,
 Irene Ruengeler,
 Felix Weinrank,
+Michael Welzl,
 and Lixia Zhang
 for her invaluable comments.</t>
 <t>This work has received funding from the European Union's Horizon 2020
