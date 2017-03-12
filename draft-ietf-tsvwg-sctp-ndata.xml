@@ -184,9 +184,9 @@ using the Supported Extensions Parameter as defined in
 <xref target='RFC5061'/>. If I-DATA support has been negotiated for an
 association I-DATA chunks are used for all user-messages.
 DATA chunks are not permitted when I-DATA support has been negotiated.
-It should be noted that an SCTP implementation needs to support the
-coexistence of associations using DATA chunks and associations using I-DATA
-chunks.</t>
+It should be noted that an SCTP implementation supporting I-DATA chunks needs
+to allow the coexistence of associations using DATA chunks and associations
+using I-DATA chunks.</t>
 <t>In <xref target='interleaving'/> this document specifies the user
 message interleaving by defining the I-DATA chunk, the procedures to use it
 and its interactions with other SCTP extensions.
@@ -249,7 +249,8 @@ addition of the new Message Identifier (MID) and the new
 Fragment Sequence Number (FSN) and the
 removal of the Stream Sequence Number (SSN).
 The length of the I-DATA chunk header is 20 bytes, which is 4 bytes more than
-the length of the DATA chunk header defined in <xref target='RFC4960'/>.</t>
+the length of the DATA chunk header defined in <xref target='RFC4960'/>
+and <xref target='RFC7053'/>.</t>
 
 <t>The new fields are:
 <list style="hanging">
@@ -279,7 +280,7 @@ Please note that the MID is in "network byte order", a.k.a. Big Endian.</t>
 <t hangText="Payload Protocol Identifier (PPID) / Fragment Sequence Number (FSN): 32 bits (unsigned integer)">
 <vspace blankLines="0"/>
 If the B bit is set, this field contains the PPID of the user message.
-Note that in this case, this field is NOT touched by an SCTP implementation;
+Note that in this case, this field is not touched by an SCTP implementation;
 therefore, its byte order is not necessarily in network byte order.
 The upper layer is responsible for any byte order conversions to this field,
 similar to the PPID of DATA chunks.
@@ -314,7 +315,8 @@ This constraint is made since the usage of this chunk requires that the
 application is willing to interleave messages upon reception within an
 association.
 This is not the default choice within the socket API
-(see <xref target='RFC6458'/>) thus the user MUST indicate to the
+(see the SCTP_FRAGMENT_INTERLEAVE socket option in Section 8.1.20 of
+<xref target='RFC6458'/>) thus the user MUST indicate to the
 SCTP implementation its support for receiving completely interleaved messages.
 Note that for stacks that do not implement <xref target='RFC6458'/> they may
 use other methods to indicate interleaved message support and thus enable the
@@ -537,10 +539,11 @@ used as the SSN when filling out these structures.</t>
 </section>
 
 <section title="SCTP_ASSOC_CHANGE Notification">
-<t>When an SCTP_ASSOC_CHANGE notification is delivered indicating
-a sac_state of SCTP_COMM_UP or SCTP_RESTART for an SCTP association
-where both peers support the I-DATA chunk,
-SCTP_ASSOC_SUPPORTS_INTERLEAVING should be listed in the sac_info field.</t>
+<t>When an SCTP_ASSOC_CHANGE notification (specified in Section 6.1.1 of
+<xref target='RFC6458'/>) is delivered indicating a sac_state of SCTP_COMM_UP
+or SCTP_RESTART for an SCTP association where both peers support the
+I-DATA chunk, SCTP_ASSOC_SUPPORTS_INTERLEAVING should be listed in the sac_info
+field.</t>
 </section>
 
 <section anchor='socket_options'
@@ -646,6 +649,7 @@ Use the scheduler specified in <xref target='sctp_ss_wfq'/>.
 The weight can be assigned with the sctp_stream_value struct.</t>
 </list></t>
 </list></t>
+<t>sctp_opt_info() needs to be extended to support SCTP_STREAM_SCHEDULER.</t>
 </section>
 
 <section title="Get or Set the Stream Scheduler Parameter (SCTP_STREAM_SCHEDULER_VALUE)">
@@ -687,6 +691,7 @@ to be provided.</t>
 The meaning of this field depends on the scheduler specified. It is
 ignored when the scheduler does not need additional information.</t>
 </list></t>
+<t>sctp_opt_info() needs to be extended to support SCTP_STREAM_SCHEDULER_VALUE.</t>
 </section>
 </section>
 <section title="Explicit EOR Marking">
