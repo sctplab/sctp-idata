@@ -7,7 +7,7 @@
 
 <rfc category="std"
      ipr="trust200902"
-     docName="draft-ietf-tsvwg-sctp-ndata-09-to-be.txt">
+     docName="draft-ietf-tsvwg-sctp-ndata-09.txt">
 <front>
 <title abbrev="Stream Schedulers and the I-DATA Chunk">
        Stream Schedulers and User Message Interleaving
@@ -206,6 +206,9 @@ document are to be interpreted as described in
 <section anchor='interleaving'
          title="User Message Interleaving">
 <!-- Add a Motivation section -->
+<t>The protocol mechanisms described in this document allow the interleaving
+of user messages sent on different streams. They do not support the interleaving
+of multiple messages (ordered or unordered) sent on the same stream.</t>
 <t>The interleaving of user messages is required for WebRTC Datachannels
 as specified in <xref target='I-D.ietf-rtcweb-data-channel'/>.</t>
 <t>An SCTP implementation supporting user message interleaving is REQUIRED
@@ -277,6 +280,8 @@ Please note that the serial number arithmetic defined in
 Therefore, the sender MUST NOT have more than 2**31 - 1 ordered messages for
 each outgoing stream in flight and MUST NOT have more than 2**31 - 1 unordered
 messages for each outgoing stream in flight.
+A message is considered in flight, if at least on of its I-DATA chunks is not
+acknowledged in a non-renegable way.
 <!-- For ordered user messages, the lower 16 bit of the MID can be used as a SSN if
 required. -->
 Please note that the MID is in "network byte order", a.k.a. Big Endian.</t>
@@ -296,7 +301,9 @@ Note that the FSN MAY wrap completely multiple times allowing arbitrarily large
 user messages. For the FSN the serial number arithmetic defined in
 <xref target='RFC1982'/> applies with SERIAL_BITS = 32.
 Therefore, a sender MUST NOT have more than 2**31 - 1 fragments of a single user
-message in flight.
+message in flight. A fragment is considered in flight, if it is not
+acknowledged in a non-renegable way.
+
 Please note that the FSN is in "network byte order", a.k.a. Big Endian.</t>
 </list></t>
 </section>
@@ -355,10 +362,11 @@ a user message and send out the TSNs in sequence.</t>
 
 <section title='Receiver Side Considerations'>
 <t>Upon reception of an SCTP packet containing an I-DATA chunk whose
-user message needs to be reassembled, the receiver MUST use the FSN
-for reassembly of the message and not the TSN. The receiver MUST NOT make
-any assumption about the TSN assignments of the sender.
-<!-- FIXME: Is this really clear? -->
+user message needs to be reassembled, the receiver MUST first use the SID to
+identify the stream, consider the U bit to determine if it is part of an ordered
+or unordered message, find the user message identified by the MID and finally
+use the FSN for reassembly of the message and not the TSN.
+The receiver MUST NOT make any assumption about the TSN assignments of the sender.
 Note that a non-fragmented message is indicated by the fact that both the 'E'
 and 'B' bits are set.
 A message (either ordered or unordered) may be identified as being fragmented
@@ -455,6 +463,11 @@ implementation of <xref target='RFC6525'/> needs to handle this.</t>
 The stream schedulers may behave differently depending on whether user
 message interleaving has been negotiated for the association or not.
 An implementation MAY implement any subset of them.</t>
+<t>The selection of the stream scheduler is done at the sender side. There
+is no mechanism provided for signalling the stream scheduler being used
+to the receiver side or even let the receiver side influence the selection
+of the stream scheduler used at the sender side.</t>
+
 <section anchor='sctp_ss_fcfs'
          title='First Come First Served (SCTP_SS_FCFS)'>
 <t>The simple first-come, first-served scheduler of user messages is used.
@@ -602,6 +615,8 @@ user messages on the same stream.
 Failure to set this option can possibly lead to application deadlock.
 Some implementations might therefore put some restrictions on setting
 combinations of these values.
+Setting the interleaving level to at least 2 before enabling the negotiation of
+user message interleaving should work on all platforms.
 Since the default fragment interleave level is not 2, user message interleaving
 is disabled per default.</t>
 </section>
@@ -769,7 +784,12 @@ in addition to the ones given in <xref target='RFC4960'/> and
 <xref target='RFC6458'/>.</t>
 <t>It should be noted that the application has to consent that it is willing
 to do the more complex reassembly support required for user message
-interleaving.</t>
+interleaving. When doing so, an application has to provide up to two reassembly
+buffers (one for ordered messages, one for unordered messages) for each incoming
+stream. It has to protect itself against these buffers taking too many resources.
+If user message interleaving is not used, only a single reassembly buffer needs
+to be provided. But the application has to protect itself for excessive resource
+usages there too.</t>
 </section>
 
 <section title='Acknowledgments'>
