@@ -470,10 +470,11 @@ non-empty stream queues.</t>
 </section>
 <section anchor='sctp_ss_rr_pkt'
          title='Round Robin Scheduler per Packet (SCTP_SS_RR_PKT)'>
-<t>This is a round-robin scheduler but only DATA or I-DATA chunks
-referring to the same stream are bundled in a packet.
-This minimizes head-of-line blocking when a packet is lost because only a
-single stream is affected.</t>
+<t>This is a round-robin scheduler which only switches streams when
+starting to fill a new packet.
+It bundles only DATA or I-DATA chunks referring to the same stream in a packet.
+This scheduler minimizes head-of-line blocking when a packet is lost because
+only a single stream is affected.</t>
 </section>
 <section anchor='sctp_ss_prio'
          title='Priority Based Scheduler (SCTP_SS_PRIO)'>
@@ -709,16 +710,17 @@ of user messages on different streams.</t>
 ]</t>
 <t>[NOTE to RFC-Editor:
 <list>
-<t>The suggested values for the chunk type and the chunk flags are tentative
+<t>The suggested values for the chunk types and the chunk flags are tentative
 and to be confirmed by IANA.</t>
 </list>
 ]</t>
 <t>This document (RFCXXXX) is the reference for all registrations
 described in this section.</t>
 
-<t>A new chunk type has to be assigned by IANA.
-IANA should assign this value from the pool of chunks with the upper
-two bits set to '01'.
+<t>Two new chunk types have to be assigned by IANA.</t>
+<section title="I-DATA Chunk">
+<t>IANA should assign the chunk type for this chunk  from the pool of chunks
+with the upper two bits set to '01'.
 This requires an additional line in the "Chunk Types" registry for SCTP:</t>
 <texttable>
 <ttcol align='left'>ID Value</ttcol>
@@ -742,6 +744,20 @@ table:</t>
 <c>0x40</c> <c>Unassigned</c> <c>         </c>
 <c>0x80</c> <c>Unassigned</c> <c>         </c>
 </texttable>
+</section>
+<section title="I-FORWARD-TSN Chunk">
+<t>IANA should assign the chunk type for this chunk  from the pool of chunks
+with the upper two bits set to '11'.
+This requires an additional line in the "Chunk Types" registry for SCTP:</t>
+<texttable>
+<ttcol align='left'>ID Value</ttcol>
+<ttcol align='left'>Chunk Type</ttcol>
+<ttcol align='left'>Reference</ttcol>
+<c>194</c> <c>I-FORWARD-TSN</c> <c>[RFCXXXX]</c>
+</texttable>
+<t>The registration table as defined in <xref target='RFC6096'/> for
+the chunk flags of this chunk type is initially empty.</t>
+</section>
 </section>
 
 <section title="Security Considerations">
