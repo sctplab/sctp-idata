@@ -7,7 +7,7 @@
 
 <rfc category="std"
      ipr="trust200902"
-     docName="draft-ietf-tsvwg-sctp-ndata-10-to-be.txt">
+     docName="draft-ietf-tsvwg-sctp-ndata-10.txt">
 <front>
 <title abbrev="Stream Schedulers and the I-DATA Chunk">
        Stream Schedulers and User Message Interleaving
@@ -312,27 +312,33 @@ Please note that the FSN is in "network byte order", a.k.a. Big Endian.</t>
 <t>This subsection describes how the support of the I-DATA chunk is negotiated
 and how the I-DATA chunk is used by the sender and receiver.</t>
 <section title='Negotiation'>
-<t>A sender MUST NOT send an I-DATA chunk unless both peers have indicated
-its support of the I-DATA chunk type within the Supported
-Extensions Parameter as defined in <xref target='RFC5061'/>.
-If I-DATA support has been negotiated for an association, I-DATA chunks
-MUST be used for all user messages and DATA-chunks MUST NOT be used.
-If I-DATA support has not been negotiated for an association, DATA chunks
-MUST be used for all user messages and I-DATA chunks MUST NOT be used.</t>
-<t>A sender MUST NOT use the I-DATA chunk unless the user has requested its use
-(e.g. via the socket API, see <xref target='socket_options'/>).
+<t>An SCTP end point indicates user message interleaving support by listing
+the I-DATA Chunk within the Supported Extensions Parameter as defined in
+<xref target='RFC5061'/>.
+User message interleaving has been negotiated for an association if both end
+points have indicated I-DATA support.</t>
+<t>If user message interleaving support has been negotiated for an association,
+I-DATA chunks MUST be used for all user messages and DATA-chunks MUST NOT be
+used.
+If user message interleaving support has not been negotiated for an association,
+DATA chunks MUST be used for all user messages and I-DATA chunks MUST NOT be
+used.</t>
+<t>An end point implementing the socket API specified in
+<xref target='RFC6458'/> MUST NOT indicate user message interleaving support
+unless the user has requested its use (e.g. via the socket API, see
+<xref target='socket_options'/>).
 This constraint is made since the usage of this chunk requires that the
-application is willing to interleave messages upon reception within an
+application is capable of handling interleaved messages upon reception within an
 association.
 This is not the default choice within the socket API
 (see the SCTP_FRAGMENT_INTERLEAVE socket option in Section 8.1.20 of
 <xref target='RFC6458'/>) thus the user MUST indicate to the
-SCTP implementation its support for receiving completely interleaved messages.
-Note that for stacks that do not implement <xref target='RFC6458'/> they may
-use other methods to indicate interleaved message support and thus enable the
-usage of the I-DATA chunk. The crucial point is that the SCTP stack MUST know
-that the application has indicated its choice in wanting to use the
-extension.</t>
+SCTP implementation its support for receiving completely interleaved messages.</t>
+<t>Note that stacks that do not implement <xref target='RFC6458'/> may
+use other methods to indicate interleaved message support and thus indicate the
+support of user message interleaving.
+The crucial point is that the SCTP stack MUST know that the application
+can handle interleaved messages before indicating the I-DATA support.</t>
 </section>
 
 <section title='Sender Side Considerations'>
@@ -371,6 +377,12 @@ Note that a non-fragmented message is indicated by the fact that both the 'E'
 and 'B' bits are set.
 A message (either ordered or unordered) may be identified as being fragmented
 whose 'E' and 'B' bits are not set both.</t>
+<t>If I-DATA support has been negotiated for an association, the reception of
+a DATA chunk is a violation of the above rules and therefore the receiver
+of the DATA chunk MUST abort the association by sending an ABORT chunk.
+The ABORT chunk MAY include the 'Protocol Violation' error cause.
+The same applies if I-DATA support has not be negotiated for an association
+and an I-DATA chunk is received.</t>
 </section>
 </section>
 
@@ -435,15 +447,23 @@ messages indicated by the U-bit that was skipped for the stream specified
 by the Stream Identifier. For ordered messages this is similar to the
 FORWARD-TSN chunk, just replacing the 16-bit SSN by the 32-bit MID.</t>
 </list></t>
+<t>Support for the I-FORWARD-TSN chunk is negotiated during the SCTP association
+setup via the Supported Extensions Parameter as defined in
+<xref target='RFC5061'/>. Only if both end points indicated their support of
+user message interleaving and the I-FORWARD-TSN chunk, the partial reliability
+extension is negotiated and can be used in combination with user message
+interleaving.</t>
 <t>The FORWARD-TSN chunk MUST be used in combination with the DATA chunk and
 MUST NOT be used in combination with the I-DATA chunk.
 The I-FORWARD-TSN chunk MUST be used in combination with the I-DATA chunk and
 MUST NOT be used in combination with the DATA chunk.</t>
-<t>Support for the I-FORWARD-TSN chunk is negotiated during the SCTP association
-setup via the Supported Extensions Parameter as defined in
-<xref target='RFC5061'/>. Only if both end points support the I-DATA chunk
-and the I-FORWARD-TSN chunk, the partial reliability extension can be used in
-combination with user message interleaving.</t>
+<t>If I-FORWARD-TSN support has been negotiated for an association, the
+reception of a FORWARD-TSN chunk is a violation of the above rules and therefore
+the receiver of the FORWARD-TSN chunk MUST abort the association by sending an
+ABORT chunk.
+The ABORT chunk MAY include the 'Protocol Violation' error cause.
+The same applies if I-FORWARD-TSN support has not be negotiated for an
+association and a FORWARD-TSN chunk is received.</t>
 </section>
 
 <section title='SCTP Stream Reconfiguration Extension'>
@@ -788,12 +808,14 @@ interleaving. When doing so, an application has to provide up to two reassembly
 buffers (one for ordered messages, one for unordered messages) for each incoming
 stream. It has to protect itself against these buffers taking too many resources.
 If user message interleaving is not used, only a single reassembly buffer needs
-to be provided. But the application has to protect itself for excessive resource
+to be provided for each association.
+But the application has to protect itself for excessive resource
 usages there too.</t>
 </section>
 
 <section title='Acknowledgments'>
 <t>The authors wish to thank
+Julian Cordes,
 Gorry Fairhurst,
 Christer Holmberg,
 Marcelo Ricardo Leitner,
