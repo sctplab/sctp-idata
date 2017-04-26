@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 310590 2016-12-26 11:06:41Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 317457 2017-04-26 19:26:40Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -7871,7 +7871,7 @@ sctp_recv_icmp_tunneled_packet(int cmd, struct sockaddr *sa, void *vip, void *ct
 		}
 		sctp_notify(inp, stcb, net, type, code,
 		            ntohs(inner_ip->ip_len),
-		            ntohs(icmp->icmp_nextmtu));
+		            (uint32_t)ntohs(icmp->icmp_nextmtu));
 	} else {
 #if defined(__FreeBSD__) && __FreeBSD_version < 500000
 		/*
@@ -8036,7 +8036,7 @@ sctp_recv_icmp6_tunneled_packet(int cmd, struct sockaddr *sa, void *d, void *ctx
 			code = ICMP6_PARAMPROB_NEXTHEADER;
 		}
 		sctp6_notify(inp, stcb, net, type, code,
-			     (uint16_t)ntohl(ip6cp->ip6c_icmp6->icmp6_mtu));
+			     ntohl(ip6cp->ip6c_icmp6->icmp6_mtu));
 	} else {
 #if defined(__FreeBSD__) && __FreeBSD_version < 500000
 		if (PRC_IS_REDIRECT(cmd) && (inp != NULL)) {

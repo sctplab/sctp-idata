@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 313031 2017-01-31 23:36:31Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 317457 2017-04-26 19:26:40Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -300,7 +300,7 @@ sctp_notify(struct sctp_inpcb *inp,
             uint8_t icmp_type,
             uint8_t icmp_code,
             uint16_t ip_len,
-            uint16_t next_mtu)
+            uint32_t next_mtu)
 {
 #if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
 	struct socket *so;
@@ -515,7 +515,7 @@ sctp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 #else
 			            inner_ip->ip_len,
 #endif
-			            ntohs(icmp->icmp_nextmtu));
+			            (uint32_t)ntohs(icmp->icmp_nextmtu));
 		} else {
 #if defined(__FreeBSD__) && __FreeBSD_version < 500000
 			/*

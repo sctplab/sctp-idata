@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet6/sctp6_usrreq.c 313330 2017-02-06 08:49:57Z ae $");
+__FBSDID("$FreeBSD: head/sys/netinet6/sctp6_usrreq.c 317457 2017-04-26 19:26:40Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -350,7 +350,7 @@ sctp6_notify(struct sctp_inpcb *inp,
              struct sctp_nets *net,
              uint8_t icmp6_type,
              uint8_t icmp6_code,
-             uint16_t next_mtu)
+             uint32_t next_mtu)
 {
 #if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
 	struct socket *so;
@@ -568,7 +568,7 @@ sctp6_ctlinput(int cmd, struct sockaddr *pktdst, void *d)
 			sctp6_notify(inp, stcb, net,
 			             ip6cp->ip6c_icmp6->icmp6_type,
 			             ip6cp->ip6c_icmp6->icmp6_code,
-			             (uint16_t)ntohl(ip6cp->ip6c_icmp6->icmp6_mtu));
+			             ntohl(ip6cp->ip6c_icmp6->icmp6_mtu));
 		} else {
 #if defined(__FreeBSD__) && __FreeBSD_version < 500000
 			if (PRC_IS_REDIRECT(cmd) && (inp != NULL)) {
