@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 317457 2017-04-26 19:26:40Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 317597 2017-04-29 19:20:50Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -57,6 +57,9 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 317457 2017-04-26 19:26:40Z tuex
 #include <netinet/sctp_constants.h>
 #endif
 #if defined(__FreeBSD__)
+#if defined(INET6) || defined(INET)
+#include <netinet/tcp_var.h>
+#endif
 #include <netinet/udp.h>
 #include <netinet/udp_var.h>
 #include <sys/proc.h>
@@ -8171,4 +8174,91 @@ sctp_over_udp_start(void)
 	return (ENOTSUP);
 #endif
 }
+
+#if defined(INET6) || defined(INET)
+
+/*
+ * sctp_min_mtu ()returns the minimum of all non-zero arguments.
+ * If all arguments are zero, zero is returned.
+ */
+uint32_t
+sctp_min_mtu(uint32_t mtu1, uint32_t mtu2, uint32_t mtu3)
+{
+	if (mtu1 > 0) {
+		if (mtu2 > 0) {
+			if (mtu3 > 0) {
+				return (min(mtu1, min(mtu2, mtu3)));
+			} else {
+				return (min(mtu1, mtu2));
+			}
+		} else {
+			if (mtu3 > 0) {
+				return (min(mtu1, mtu3));
+			} else {
+				return (mtu1);
+			}
+		}
+	} else {
+		if (mtu2 > 0) {
+			if (mtu3 > 0) {
+				return (min(mtu2, mtu3));
+			} else {
+				return (mtu2);
+			}
+		} else {
+			return (mtu3);
+		}
+	}
+}
+
+void
+sctp_hc_set_mtu(union sctp_sockstore *addr, uint16_t fibnum, uint32_t mtu)
+{
+	struct in_conninfo inc;
+
+	memset(&inc, 0, sizeof(struct in_conninfo));
+	inc.inc_fibnum = fibnum;
+	switch (addr->sa.sa_family) {
+#ifdef INET
+	case AF_INET:
+		inc.inc_faddr = addr->sin.sin_addr;
+		break;
+#endif
+#ifdef INET6
+	case AF_INET6:
+		inc.inc_flags |= INC_ISIPV6;
+		inc.inc6_faddr = addr->sin6.sin6_addr;
+		break;
+#endif
+	default:
+		return;
+	}
+	tcp_hc_updatemtu(&inc, (u_long)mtu);
+}
+
+uint32_t
+sctp_hc_get_mtu(union sctp_sockstore *addr, uint16_t fibnum)
+{
+	struct in_conninfo inc;
+
+	memset(&inc, 0, sizeof(struct in_conninfo));
+	inc.inc_fibnum = fibnum;
+	switch (addr->sa.sa_family) {
+#ifdef INET
+	case AF_INET:
+		inc.inc_faddr = addr->sin.sin_addr;
+		break;
+#endif
+#ifdef INET6
+	case AF_INET6:
+		inc.inc_flags |= INC_ISIPV6;
+		inc.inc6_faddr = addr->sin6.sin6_addr;
+		break;
+#endif
+	default:
+		return (0);
+	}
+	return ((uint32_t)tcp_hc_getmtu(&inc));
+}
+#endif
 #endif

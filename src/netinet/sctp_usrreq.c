@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 317464 2017-04-26 20:21:05Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 317597 2017-04-29 19:20:50Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -380,6 +380,11 @@ sctp_notify(struct sctp_inpcb *inp,
 		}
 		if (net->mtu > next_mtu) {
 			net->mtu = next_mtu;
+			if (net->port) {
+				sctp_hc_set_mtu(&net->ro._l_addr, inp->fibnum, next_mtu + sizeof(struct udphdr));
+			} else {
+				sctp_hc_set_mtu(&net->ro._l_addr, inp->fibnum, next_mtu);
+			}
 		}
 		/* Update the association MTU */
 		if (stcb->asoc.smallest_mtu > next_mtu) {
