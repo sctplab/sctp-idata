@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 313330 2017-02-06 08:49:57Z ae $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 318958 2017-05-26 16:29:00Z tuexen $");
 #endif
 
 #ifndef _NETINET_SCTP_OS_BSD_H_
@@ -566,8 +566,6 @@ sctp_get_mbuf_for_msg(unsigned int space_needed,
 #define SCTP_SHA256_FINAL(x,y)	SHA256_Final((caddr_t)x, y)
 #endif
 
-#endif
-
 #define SCTP_DECREMENT_AND_CHECK_REFCOUNT(addr) (atomic_fetchadd_int(addr, -1) == 1)
 #if defined(INVARIANTS)
 #define SCTP_SAVE_ATOMIC_DECREMENT(addr, val) \
@@ -587,5 +585,9 @@ sctp_get_mbuf_for_msg(unsigned int space_needed,
 		*addr = 0; \
 	} \
 }
+#endif
+
+#define SCTP_IS_LISTENING(inp) ((inp->sctp_flags & SCTP_PCB_FLAGS_ACCEPTING) != 0)
+
 #endif
 

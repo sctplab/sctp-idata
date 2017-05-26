@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 317597 2017-04-29 19:20:50Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 318958 2017-05-26 16:29:00Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -8176,7 +8176,7 @@ sctp_listen(struct socket *so, struct proc *p)
 				if (tinp && (tinp != inp) &&
 				    ((tinp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_ALLGONE) == 0) &&
 				    ((tinp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE) == 0) &&
-				    (tinp->sctp_socket->so_qlimit)) {
+				    (SCTP_IS_LISTENING(tinp))) {
 					/* we have a listener already and its not this inp. */
 					SCTP_INP_DECR_REF(tinp);
 					return (EADDRINUSE);
@@ -8239,7 +8239,7 @@ sctp_listen(struct socket *so, struct proc *p)
 			if (tinp && (tinp != inp) &&
 			    ((tinp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_ALLGONE) == 0) &&
 			    ((tinp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE) == 0) &&
-			    (tinp->sctp_socket->so_qlimit)) {
+			    (SCTP_IS_LISTENING(tinp))) {
 				/* we have a listener already and its not this inp. */
 				SCTP_INP_DECR_REF(tinp);
 				return (EADDRINUSE);
@@ -8293,6 +8293,7 @@ sctp_listen(struct socket *so, struct proc *p)
 			return (error);
 		}
 	}
+	SCTP_INP_WLOCK(inp);
 	SOCK_LOCK(so);
 #if (defined(__FreeBSD__) && __FreeBSD_version > 500000) || defined(__Windows__) || defined(__Userspace__)
 #if __FreeBSD_version >= 700000 || defined(__Windows__) || defined(__Userspace__)
@@ -8312,18 +8313,13 @@ sctp_listen(struct socket *so, struct proc *p)
 		so->so_options &= ~SO_ACCEPTCONN;
 #endif
 	}
-
-#if __FreeBSD_version >= 700000 || defined(__Windows__) || defined(__Userspace__)
-	if (backlog == 0) {
-		/* turning off listen */
-#if defined(__Userspace__)
-		so->so_options &= ~SCTP_SO_ACCEPTCONN;
-#else
-		so->so_options &= ~SO_ACCEPTCONN;
-#endif
+	if (backlog > 0) {
+		inp->sctp_flags |= SCTP_PCB_FLAGS_ACCEPTING;
+	} else {
+		inp->sctp_flags &= ~SCTP_PCB_FLAGS_ACCEPTING;
 	}
-#endif
 	SOCK_UNLOCK(so);
+	SCTP_INP_WUNLOCK(inp);
 	return (error);
 }
 

@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_input.c 313330 2017-02-06 08:49:57Z ae $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_input.c 318958 2017-05-26 16:29:00Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -184,12 +184,11 @@ sctp_handle_init(struct mbuf *m, int iphlen, int offset,
 			*abort_no_unlock = 1;
 		goto outnow;
 	}
-	/* We are only accepting if we have a socket with positive so_qlimit.*/
+	/* We are only accepting if we have a listening socket.*/
 	if ((stcb == NULL) &&
 	    ((inp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE) ||
 	     (inp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_ALLGONE) ||
-	     (inp->sctp_socket == NULL) ||
-	     (inp->sctp_socket->so_qlimit == 0))) {
+	     (!SCTP_IS_LISTENING(inp)))) {
 		/*
 		 * FIX ME ?? What about TCP model and we have a
 		 * match/restart case? Actually no fix is needed.
@@ -1693,8 +1692,7 @@ sctp_process_cookie_existing(struct mbuf *m, int iphlen, int offset,
 				sctp_stop_all_cookie_timers(stcb);
 				if (((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 				     (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)) &&
-				    (inp->sctp_socket->so_qlimit == 0)
-					) {
+				    (!SCTP_IS_LISTENING(inp))) {
 #if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
 					struct socket *so;
 #endif
@@ -1892,7 +1890,7 @@ sctp_process_cookie_existing(struct mbuf *m, int iphlen, int offset,
 
 			if (((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			     (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)) &&
-			    (inp->sctp_socket->so_qlimit == 0)) {
+			    (!SCTP_IS_LISTENING(inp))) {
 #if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
 				struct socket *so;
 #endif
@@ -2437,7 +2435,7 @@ sctp_process_cookie_new(struct mbuf *m, int iphlen, int offset,
 	*notification = SCTP_NOTIFY_ASSOC_UP;
 	if (((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 	    (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)) &&
-	    (inp->sctp_socket->so_qlimit == 0)) {
+	    (!SCTP_IS_LISTENING(inp))) {
 		/*
 		 * This is an endpoint that called connect() how it got a
 		 * cookie that is NEW is a bit of a mystery. It must be that
@@ -2463,7 +2461,7 @@ sctp_process_cookie_new(struct mbuf *m, int iphlen, int offset,
 		SCTP_SOCKET_UNLOCK(so, 1);
 #endif
 	} else if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) &&
-	    (inp->sctp_socket->so_qlimit)) {
+	           (SCTP_IS_LISTENING(inp))) {
 		/*
 		 * We don't want to do anything with this one. Since it is
 		 * the listening guy. The timer will get started for
@@ -5390,7 +5388,9 @@ sctp_process_control(struct mbuf *m, int iphlen, int *offset, int length,
 			 * longer listening.
 			 */
 
-			if ((stcb == NULL) && (inp->sctp_socket->so_qlen >= inp->sctp_socket->so_qlimit)) {
+			if ((stcb == NULL) &&
+			    (!SCTP_IS_LISTENING(inp) ||
+			     inp->sctp_socket->so_qlen >= inp->sctp_socket->so_qlimit)) {
 				if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) &&
 				    (SCTP_BASE_SYSCTL(sctp_abort_if_one_2_one_hits_limit))) {
 					op_err = sctp_generate_cause(SCTP_CAUSE_OUT_OF_RESC, "");

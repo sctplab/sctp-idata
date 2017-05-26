@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_pcb.c 317597 2017-04-29 19:20:50Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_pcb.c 318958 2017-05-26 16:29:00Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -1511,7 +1511,7 @@ sctp_findassociation_ep_addr(struct sctp_inpcb **inp_p, struct sockaddr *remote,
 		 * it is the acceptor, then do the special_lookup to hash
 		 * and find the real inp.
 		 */
-		if ((inp->sctp_socket) && (inp->sctp_socket->so_qlimit)) {
+		if ((inp->sctp_socket) && SCTP_IS_LISTENING(inp)) {
 			/* to is peer addr, from is my addr */
 #ifndef SCTP_MVRF
 			stcb = sctp_tcb_special_locate(inp_p, remote, local,
@@ -2223,7 +2223,7 @@ sctp_swap_inpcb_for_listen(struct sctp_inpcb *inp)
 		if (tinp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE) {
 			continue;
 		}
-		if (tinp->sctp_socket->so_qlimit) {
+		if (SCTP_IS_LISTENING(tinp)) {
 			continue;
 		}
 		SCTP_INP_WLOCK(tinp);

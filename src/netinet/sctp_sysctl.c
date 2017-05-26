@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_sysctl.c 310590 2016-12-26 11:06:41Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_sysctl.c 318958 2017-05-26 16:29:00Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -503,6 +503,7 @@ sctp_sysctl_handle_assoclist(SYSCTL_HANDLER_ARGS)
 #endif
 		so = inp->sctp_socket;
 		if ((so == NULL) ||
+		    (!SCTP_IS_LISTENING(inp)) ||
 		    (inp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE)) {
 			xinpcb.qlen = 0;
 			xinpcb.maxqlen = 0;
