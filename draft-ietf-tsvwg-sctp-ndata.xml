@@ -109,21 +109,24 @@ Number (TSN) for three different purposes:
 <list style="numbers">
 <t>As an identifier for DATA chunks to provide a reliable transfer.</t>
 <t>As an identifier for the sequence of fragments to allow reassembly.</t>
-<t>As a sequence number allowing to have up to 2**16 - 1 Stream Sequence
+<t>As a sequence number allowing up to 2**16 - 1 Stream Sequence
 Numbers (SSNs) outstanding.</t>
 </list>
 The protocol requires all fragments of a user message to have consecutive
-TSNs. Therefore it is impossible for the sender to interleave different
-user messages.</t>
+TSNs.
+This document allows an SCTP sender to interleave different user messages.</t>
 <t>This document also defines several stream schedulers for general SCTP
 associations. They can be used with and without user message interleaving
 being negotiated and possibly behave differently.</t>
 <t><xref target='RRwithoutMI'/> illustrates the behaviour of a round robin
 stream scheduler using DATA chunks when three streams with the Stream
-Identifiers (SIDs) 0, 1, and 2 are used.
+Identifiers (SIDs) 0, 1, and 2 are used. Each queue for SID 0 and SID 2 contains
+a single user message requiring three chunks, the queue for SID 1 contains
+three user messages each requiring a single chunk. It is shown how these
+user messages are encapsulated in chunk using TSN 0 to TSN 8.
 Please note that the use of such a scheduler implies late TSN assignment but
-it can be used with an <xref target='RFC4960'/> compliant implementation not
-supporting user message interleaving.</t>
+it can be used with an <xref target='RFC4960'/> compliant implementation that
+does not support user message interleaving.</t>
 <figure title='Round Robin Scheduler without User Message Interleaving'
         anchor='RRwithoutMI'>
 <artwork>
@@ -154,8 +157,7 @@ The FSN is only used for reassembling all fragments having the same MID
 and ordering property. The TSN is only used for the reliable transfer in
 combination with Selective Acknowledgment (SACK) chunks.</t>
 <t>In addition, the MID is also used for ensuring ordered delivery instead
-of using the stream sequence number, which has been omitted from the I-DATA
-chunk.</t>
+of using the stream sequence number (The I-DATA chunk omits a SSN.).</t>
 <t><xref target='RRwithMI'/> illustrates the behaviour of an interleaving
 round robin stream scheduler using I-DATA chunks.</t>
 <figure title='Round Robin Scheduler with User Message Interleaving'
@@ -489,7 +491,7 @@ to the receiver side or even let the receiver side influence the selection
 of the stream scheduler used at the sender side.</t>
 
 <section anchor='sctp_ss_fcfs'
-         title='First Come First Served (SCTP_SS_FCFS)'>
+         title='First Come First Served Scheduler (SCTP_SS_FCFS)'>
 <t>The simple first-come, first-served scheduler of user messages is used.
 It just passes through the messages in the order in which they have been
 delivered by the application. No modification of the order is done at all.
@@ -506,7 +508,7 @@ non-empty stream queues.</t>
 </section>
 <section anchor='sctp_ss_rr_pkt'
          title='Round Robin Scheduler per Packet (SCTP_SS_RR_PKT)'>
-<t>This is a round-robin scheduler which only switches streams when
+<t>This is a round-robin scheduler, which only switches streams when
 starting to fill a new packet.
 It bundles only DATA or I-DATA chunks referring to the same stream in a packet.
 This scheduler minimizes head-of-line blocking when a packet is lost because
@@ -535,14 +537,14 @@ fair bandwidth usage.</t>
 <t>A weighted fair queueing scheduler between the streams is used. The weight is
 configurable per outgoing SCTP stream.
 This scheduler considers the lengths of the messages of each stream and
-schedules them in a specific way to use the bandwidth according to the given
+schedules them in a specific way to use the capacity according to the given
 weights.
 If the weight of stream S1 is n times the weight of stream S2, the
-scheduler should assign to stream S1 n times the bandwidth it assigns to
+scheduler should assign to stream S1 n times the capacity it assigns to
 stream S2.
 The details are implementation dependent.
 Using user message interleaving allows for a better realization of the
-bandwidth usage according to the given weights.</t>
+capacity usage according to the given weights.</t>
 <t>This scheduler in combination with user message interleaving is used for
 WebRTC Datachannels as specified in
 <xref target='I-D.ietf-rtcweb-data-channel'/>.</t>
@@ -556,20 +558,23 @@ WebRTC Datachannels as specified in
 described in this document.</t>
 <t>Please note that this section is informational only.</t>
 
-<section title="Exposition of the Stream Sequence Number (SSN)">
+<section title="Exposure of the Stream Sequence Number (SSN)">
 <t>The socket API defined in <xref target='RFC6458'/> defines several structures
 in which the SSN of a received user message is exposed to the application.
 The list of these structures includes:
 <list style="hanging">
 <t hangText="struct sctp_sndrcvinfo">
 <vspace blankLines="0"/>
-Specified in Section 5.3.2 of <xref target='RFC6458'/> and marked as deprecated.</t>
+Specified in Section 5.3.2 SCTP Header Information Structure (SCTP_SNDRCV) of
+<xref target='RFC6458'/> and marked as deprecated.</t>
 <t hangText="struct sctp_extrcvinfo">
 <vspace blankLines="0"/>
-Specified in Section 5.3.3 of <xref target='RFC6458'/> and marked as deprecated.</t>
+Specified in Section 5.3.3 Extended SCTP Header Information Structure
+(SCTP_EXTRCV)of <xref target='RFC6458'/> and marked as deprecated.</t>
 <t hangText="struct sctp_rcvinfo">
 <vspace blankLines="0"/>
-Specified in Section 5.3.5 of <xref target='RFC6458'/>.</t>
+Specified in Section 5.3.5 SCTP Receive Information Structure (SCTP_RCVINFO)
+of <xref target='RFC6458'/>.</t>
 </list>
 If user message interleaving is used, the lower order 16 bits of the MID are
 used as the SSN when filling out these structures.</t>
