@@ -524,18 +524,18 @@ When using user message interleaving, the sending of lower priority user
 messages will not block the sending of higher priority user messages.</t>
 </section>
 <section anchor='sctp_ss_fb'
-         title='Fair Bandwidth Scheduler (SCTP_SS_FB)'>
-<t>A fair bandwidth distribution between the streams is used.
+         title='Fair Capacity Scheduler (SCTP_SS_FC)'>
+<t>A fair capacity distribution between the streams is used.
 This scheduler considers the lengths of the messages of each stream and
-schedules them in a specific way to maintain an equal bandwidth for all
+schedules them in a specific way to maintain an equal capacity for all
 streams. The details are implementation dependent.
 Using user message interleaving allows for a better realization of the
-fair bandwidth usage.</t>
+fair capacity usage.</t>
 </section>
 <section anchor='sctp_ss_wfq'
          title='Weighted Fair Queueing Scheduler (SCTP_SS_WFQ)'>
-<t>A weighted fair queueing scheduler between the streams is used. The weight is
-configurable per outgoing SCTP stream.
+<t>A weighted fair queueing scheduler between the streams is used.
+The weight is configurable per outgoing SCTP stream.
 This scheduler considers the lengths of the messages of each stream and
 schedules them in a specific way to use the capacity according to the given
 weights.
@@ -635,8 +635,8 @@ a value of 0 encodes the disabling of user message interleaving.</t>
 interleave level to 2 by using the SCTP_FRAGMENT_INTERLEAVE socket option
 specified in Section 8.1.20 of <xref target='RFC6458'/>.
 This allows the interleaving of user messages from different streams.
-Please note that it does not allow the interleaving of ordered and unordered
-user messages on the same stream.
+Please note that it does not allow the interleaving of user messages
+(ordered or unordered) on the same stream.
 Failure to set this option can possibly lead to application deadlock.
 Some implementations might therefore put some restrictions on setting
 combinations of these values.
@@ -822,6 +822,7 @@ usages there too.</t>
 <t>The authors wish to thank
 Julian Cordes,
 Gorry Fairhurst,
+Lennart Grahl,
 Christer Holmberg,
 Marcelo Ricardo Leitner,
 Karen E. Egede Nielsen,
