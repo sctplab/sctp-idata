@@ -5380,7 +5380,7 @@ sctp_process_control(struct mbuf *m, int iphlen, int *offset, int length,
 					return (NULL);
 				}
 			}
-			/*
+			/*-
 			 * First are we accepting? We do this again here
 			 * since it is possible that a previous endpoint WAS
 			 * listening responded to a INIT-ACK and then
@@ -5401,7 +5401,7 @@ sctp_process_control(struct mbuf *m, int iphlen, int *offset, int length,
 			    (!SCTP_IS_LISTENING(inp) ||
 			     (!(inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
 #if defined(__FreeBSD__) && __FreeBSD_version >= 1200034
-			      inp->sctp_socket->so_qlen >= inp->sctp_socket->sol_qlimit))) {
+			      inp->sctp_socket->sol_qlen >= inp->sctp_socket->sol_qlimit))) {
 #else
 			      inp->sctp_socket->so_qlen >= inp->sctp_socket->so_qlimit))) {
 #endif
