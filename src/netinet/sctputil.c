@@ -2912,6 +2912,7 @@ set_error:
 				stcb->sctp_socket->so_error = ECONNABORTED;
 			}
 		}
+		SOCK_UNLOCK(stcb->sctp_socket);
 	}
 	/* Wake ANY sleepers */
 #if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
@@ -2931,11 +2932,7 @@ set_error:
 	if (((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 	     (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)) &&
 	    ((state == SCTP_COMM_LOST) || (state == SCTP_CANT_STR_ASSOC))) {
-#if defined(__APPLE__)
 		socantrcvmore(stcb->sctp_socket);
-#else
-		socantrcvmore_locked(stcb->sctp_socket);
-#endif
 	}
 	sorwakeup(stcb->sctp_socket);
 	sowwakeup(stcb->sctp_socket);
