@@ -8298,7 +8298,13 @@ sctp_listen(struct socket *so, struct proc *p)
 	SCTP_INP_WLOCK(inp);
 	SOCK_LOCK(so);
 #if (defined(__FreeBSD__) && __FreeBSD_version > 500000) || defined(__Windows__) || defined(__Userspace__)
-#if __FreeBSD_version >= 700000 || defined(__Windows__) || defined(__Userspace__)
+#if __FreeBSD_version >= 1200034
+	if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) == 0) {
+		SOCK_LOCK(so);
+		solisten_proto(so);
+		SOCK_UNLOCK(so);
+	}
+#elif __FreeBSD_version >= 700000 || defined(__Windows__) || defined(__Userspace__)
 	/* It appears for 7.0 and on, we must always call this. */
 	solisten_proto(so, backlog);
 #else
@@ -8307,6 +8313,7 @@ sctp_listen(struct socket *so, struct proc *p)
 	}
 #endif
 #endif
+#if !defined(__FreeBSD__) || __FreeBSD_version < 1200034
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) {
 		/* remove the ACCEPTCONN flag for one-to-many sockets */
 #if defined(__Userspace__)
@@ -8315,6 +8322,7 @@ sctp_listen(struct socket *so, struct proc *p)
 		so->so_options &= ~SO_ACCEPTCONN;
 #endif
 	}
+#endif
 #if (defined(__FreeBSD__) && __FreeBSD_version >= 700000) || defined(__Windows__) || defined(__Userspace__)
 	if (backlog > 0) {
 		inp->sctp_flags |= SCTP_PCB_FLAGS_ACCEPTING;
