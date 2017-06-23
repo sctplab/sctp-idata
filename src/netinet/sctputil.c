@@ -8174,8 +8174,7 @@ sctp_over_udp_start(void)
 	return (ENOTSUP);
 #endif
 }
-
-#if defined(INET6) || defined(INET)
+#endif
 
 /*
  * sctp_min_mtu ()returns the minimum of all non-zero arguments.
@@ -8211,6 +8210,7 @@ sctp_min_mtu(uint32_t mtu1, uint32_t mtu2, uint32_t mtu3)
 	}
 }
 
+#if defined(__FreeBSD__)
 void
 sctp_hc_set_mtu(union sctp_sockstore *addr, uint16_t fibnum, uint32_t mtu)
 {
@@ -8260,5 +8260,4 @@ sctp_hc_get_mtu(union sctp_sockstore *addr, uint16_t fibnum)
 	}
 	return ((uint32_t)tcp_hc_getmtu(&inc));
 }
-#endif
 #endif

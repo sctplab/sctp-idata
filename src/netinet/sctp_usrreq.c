@@ -380,11 +380,13 @@ sctp_notify(struct sctp_inpcb *inp,
 		}
 		if (net->mtu > next_mtu) {
 			net->mtu = next_mtu;
+#if defined(__FreeBSD__)
 			if (net->port) {
 				sctp_hc_set_mtu(&net->ro._l_addr, inp->fibnum, next_mtu + sizeof(struct udphdr));
 			} else {
 				sctp_hc_set_mtu(&net->ro._l_addr, inp->fibnum, next_mtu);
 			}
+#endif
 		}
 		/* Update the association MTU */
 		if (stcb->asoc.smallest_mtu > next_mtu) {
@@ -8313,11 +8315,15 @@ sctp_listen(struct socket *so, struct proc *p)
 		so->so_options &= ~SO_ACCEPTCONN;
 #endif
 	}
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 700000) || defined(__Windows__) || defined(__Userspace__)
 	if (backlog > 0) {
 		inp->sctp_flags |= SCTP_PCB_FLAGS_ACCEPTING;
 	} else {
 		inp->sctp_flags &= ~SCTP_PCB_FLAGS_ACCEPTING;
 	}
+#else
+	inp->sctp_flags |= SCTP_PCB_FLAGS_ACCEPTING;
+#endif
 	SOCK_UNLOCK(so);
 	SCTP_INP_WUNLOCK(inp);
 	return (error);

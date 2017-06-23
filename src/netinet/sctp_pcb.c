@@ -4647,6 +4647,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 	             stcb->sctp_ep->fibnum);
 
 	net->src_addr_selected = 0;
+#if !defined(__Userspace__)
 	if (SCTP_ROUTE_HAS_VALID_IFN(&net->ro)) {
 		/* Get source address */
 		net->ro._s_addr = sctp_source_address_selection(stcb->sctp_ep,
@@ -4666,7 +4667,11 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 				imtu = 0;
 			}
 			rmtu = SCTP_GATHER_MTU_FROM_ROUTE(net->ro._s_addr, &net->ro._l_addr.sa, net->ro.ro_rt);
+#if defined(__FreeBSD__)
 			hcmtu = sctp_hc_get_mtu(&net->ro._l_addr, stcb->sctp_ep->fibnum);
+#else
+			hcmtu = 0;
+#endif
 			net->mtu = sctp_min_mtu(hcmtu, rmtu, imtu);
 			if (rmtu == 0) {
 				/* Start things off to match mtu of interface please. */
@@ -4675,6 +4680,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 			}
 		}
 	}
+#endif
 	if (net->mtu == 0) {
 		switch (newaddr->sa_family) {
 #ifdef INET
