@@ -141,6 +141,11 @@ void sctp_fix_ecn_echo(struct sctp_association *);
 
 void sctp_move_chunks_from_net(struct sctp_tcb *stcb, struct sctp_nets *net);
 
+
+#define SCTP_DATA_CHUNK_OVERHEAD(stcb) ((stcb)->asoc.idata_support ? \
+					sizeof(struct sctp_idata_chunk) : \
+					sizeof(struct sctp_data_chunk))
+
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 int
 sctp_output(struct sctp_inpcb *, struct mbuf *, struct sockaddr *,
