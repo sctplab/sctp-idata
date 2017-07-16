@@ -65,7 +65,7 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_indata.c 310590 2016-12-26 11:06:41Z t
  * This will cause sctp_service_queues() to get called on the top entry in
  * the list.
  */
-static void
+static uint32_t
 sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 			struct sctp_stream_in *strm,
 			struct sctp_tcb *stcb,
