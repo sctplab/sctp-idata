@@ -591,10 +591,10 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 			nxt_todel = strm->last_mid_delivered + 1;
 			if (SCTP_MID_EQ(asoc->idata_supported, nxt_todel, control->mid) &&
 			    (((control->sinfo_flags >> 8) & SCTP_DATA_NOT_FRAG) == SCTP_DATA_NOT_FRAG)) {
-				asoc->size_on_all_streams -= control->length;
-				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				if (control->on_strm_q == SCTP_ON_ORDERED) {
 					TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
+					asoc->size_on_all_streams -= control->length;
+					sctp_ucount_decr(asoc->cnt_on_all_streams);
 #ifdef INVARIANTS
 				} else {
 					panic("Huh control: %p is on_strm_q: %d",
@@ -1142,6 +1142,8 @@ done_un:
 #endif
 				SCTP_STAT_INCR_COUNTER64(sctps_reasmusrmsgs);
 				TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
+				asoc->size_on_all_streams -= control->length;
+				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				control->on_strm_q = 0;
 			}
 			if (strm->pd_api_started && control->pdapi_started) {
@@ -1149,8 +1151,6 @@ done_un:
 				strm->pd_api_started = 0;
 			}
 			if (control->on_read_q == 0) {
-				asoc->size_on_all_streams -= control->length;
-				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				sctp_add_to_readq(stcb->sctp_ep, stcb,
 						  control,
 						  &stcb->sctp_socket->so_rcv, control->end_added,
@@ -1187,6 +1187,8 @@ deliver_more:
 #endif
 					SCTP_STAT_INCR_COUNTER64(sctps_reasmusrmsgs);
 					TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
+					asoc->size_on_all_streams -= control->length;
+					sctp_ucount_decr(asoc->cnt_on_all_streams);
 					control->on_strm_q = 0;
 				}
 				ret++;
@@ -1203,8 +1205,6 @@ deliver_more:
 			}
 			done = (control->end_added) && (control->last_frag_seen);
 			if (control->on_read_q == 0) {
-				asoc->size_on_all_streams -= control->length;
-				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				sctp_add_to_readq(stcb->sctp_ep, stcb,
 						  control,
 						  &stcb->sctp_socket->so_rcv, control->end_added,
@@ -1278,6 +1278,8 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 			} else if (control->on_strm_q == SCTP_ON_ORDERED) {
 				/* Ordered */
 				TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
+				asoc->size_on_all_streams -= control->length;
+				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				control->on_strm_q = 0;
 #ifdef INVARIANTS
 			} else if (control->on_strm_q) {
@@ -5400,6 +5402,8 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 	}
 	if (control->on_strm_q == SCTP_ON_ORDERED) {
 		TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
+		asoc->size_on_all_streams -= control->length;
+		sctp_ucount_decr(asoc->cnt_on_all_streams);
 		control->on_strm_q = 0;
 	} else if (control->on_strm_q == SCTP_ON_UNORDERED) {
 		TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
@@ -5608,6 +5612,8 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 					ctl->end_added = 1;
 					if (ctl->on_strm_q == SCTP_ON_ORDERED) {
 						TAILQ_REMOVE(&strm->inqueue, ctl, next_instrm);
+						asoc->size_on_all_streams -= control->length;
+						sctp_ucount_decr(asoc->cnt_on_all_streams);
 					} else if (ctl->on_strm_q == SCTP_ON_UNORDERED) {
 						TAILQ_REMOVE(&strm->uno_inqueue, ctl, next_instrm);
 #ifdef INVARIANTS
