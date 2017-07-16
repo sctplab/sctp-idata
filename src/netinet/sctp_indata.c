@@ -99,6 +99,8 @@ sctp_calc_rwnd(struct sctp_tcb *stcb, struct sctp_association *asoc)
 	    asoc->size_on_reasm_queue == 0 &&
 	    asoc->size_on_all_streams == 0) {
 		/* Full rwnd granted */
+		KASSERT(asoc->cnt_on_reasm_queue == 0, ("cnt_on_reasm_queue is %u", asoc->cnt_on_reasm_queue));
+		KASSERT(asoc->cnt_on_all_streams == 0, ("cnt_on_all_streams is %u", asoc->cnt_on_all_streams));
 		calc = max(SCTP_SB_LIMIT_RCV(stcb->sctp_socket), SCTP_MINIMAL_RWND);
 		return (calc);
 	}
@@ -689,7 +691,7 @@ sctp_setup_tail_pointer(struct sctp_queued_to_read *control)
 }
 
 static void
-sctp_add_to_tail_pointer(struct sctp_queued_to_read *control, struct mbuf *m)
+sctp_add_to_tail_pointer(struct sctp_queued_to_read *control, struct mbuf *m, uint32_t *added)
 {
 	struct mbuf *prev=NULL;
 	struct sctp_tcb *stcb;
@@ -733,6 +735,7 @@ sctp_add_to_tail_pointer(struct sctp_queued_to_read *control, struct mbuf *m)
 			 */
 			sctp_sballoc(stcb, &stcb->sctp_socket->so_rcv, m);
 		}
+		*added += SCTP_BUF_LEN(m);
 		atomic_add_int(&control->length, SCTP_BUF_LEN(m));
 		m = SCTP_BUF_NEXT(m);
 	}
@@ -1146,6 +1149,8 @@ done_un:
 				strm->pd_api_started = 0;
 			}
 			if (control->on_read_q == 0) {
+				asoc->size_on_all_streams -= control->length;
+				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				sctp_add_to_readq(stcb->sctp_ep, stcb,
 						  control,
 						  &stcb->sctp_socket->so_rcv, control->end_added,
@@ -1198,6 +1203,8 @@ deliver_more:
 			}
 			done = (control->end_added) && (control->last_frag_seen);
 			if (control->on_read_q == 0) {
+				asoc->size_on_all_streams -= control->length;
+				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				sctp_add_to_readq(stcb->sctp_ep, stcb,
 						  control,
 						  &stcb->sctp_socket->so_rcv, control->end_added,
@@ -1219,7 +1226,7 @@ out:
 }
 
 
-void
+uint32_t
 sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 			struct sctp_stream_in *strm,
 			struct sctp_tcb *stcb, struct sctp_association *asoc,
@@ -1230,6 +1237,7 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 	 * data from the chk onto the control and free
 	 * up the chunk resources.
 	 */
+	uint32_t added=0;
 	int i_locked = 0;
 
 	if (control->on_read_q && (hold_rlock == 0)) {
@@ -1244,7 +1252,7 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 		control->data = chk->data;
 		sctp_setup_tail_pointer(control);
 	} else {
-		sctp_add_to_tail_pointer(control, chk->data);
+		sctp_add_to_tail_pointer(control, chk->data, &added);
 	}
 	control->fsn_included = chk->rec.data.fsn;
 	asoc->size_on_reasm_queue -= chk->send_size;
@@ -1285,6 +1293,7 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 		SCTP_INP_READ_UNLOCK(stcb->sctp_ep);
 	}
 	sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
+	return (added);
 }
 
 /*
@@ -1304,6 +1313,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	struct sctp_tmit_chunk *at, *nat;
 	struct sctp_stream_in *strm;
 	int do_wakeup, unordered;
+	uint32_t lenadded;
 
 	strm = &asoc->strmin[control->sinfo_stream];
 	/*
@@ -1316,6 +1326,9 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	}
 	/* Must be added to the stream-in queue */
 	if (created_control) {
+		if (unordered == 0) {
+			sctp_ucount_incr(asoc->cnt_on_all_streams);
+		}
 		if (sctp_place_control_in_stream(strm, asoc, control)) {
 			/* Duplicate SSN? */
 			sctp_clean_up_control(stcb, control);
@@ -1375,6 +1388,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		chk->data = NULL;
 		sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
 		sctp_setup_tail_pointer(control);
+		asoc->size_on_all_streams += control->length;
 	} else {
 		/* Place the chunk in our list */
 		int inserted=0;
@@ -1518,7 +1532,8 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					at->rec.data.fsn,
 					next_fsn, control->fsn_included);
 				TAILQ_REMOVE(&control->reasm, at, sctp_next);
-				sctp_add_chk_to_control(control, strm, stcb, asoc, at, SCTP_READ_LOCK_NOT_HELD);
+				lenadded = sctp_add_chk_to_control(control, strm, stcb, asoc, at, SCTP_READ_LOCK_NOT_HELD);
+				asoc->size_on_all_streams += lenadded;
 				if (control->on_read_q) {
 					do_wakeup = 1;
 				}
