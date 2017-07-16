@@ -1,0 +1,22 @@
+ 0.0 socket(..., SOCK_STREAM, IPPROTO_SCTP) = 3
++0.0 fcntl(3, F_GETFL) = 0x02 (flags O_RDWR)
++0.0 fcntl(3, F_SETFL, O_RDWR | O_NONBLOCK) = 0
++0.0 setsockopt(3, SOL_SOCKET, SO_SNDBUF, [10000], 4) = 0
++0.0 setsockopt(3, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, [1], 4) = 0
++0.0 setsockopt(3, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, [2], 4) = 0
++0.0 setsockopt(3, IPPROTO_SCTP, SCTP_INTERLEAVING_SUPPORTED, {assoc_value=1}, 8) = 0
++0.0 bind(3, ..., ...) = 0
++0.0 connect(3, ..., ...) = -1 EINPROGRESS (Operation now in progress)
++0.0 > sctp: INIT[flgs=0, tag=1, a_rwnd=..., os=..., is=..., tsn=1, ...]
++0.0 < sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=10000, os=1, is=1, tsn=1,
+                      SUPPORTED_EXTENSIONS[types=[I_DATA]],
+                      STATE_COOKIE[len=4, val=...]]
++0.0 > sctp: COOKIE_ECHO[flgs=0, len=4, val=...]
++0.0 < sctp: COOKIE_ACK[flgs=0]
++0.1 sctp_sendmsg(3, ..., 5000, NULL, 0, htonl(0), 0, 0, 0, 0) = 5000
++0.0 > sctp: I_DATA[flgs=B, len=1468, tsn=1, sid=0, mid=0, ppid=0]
++0.0 > sctp: I_DATA[flgs=0, len=1468, tsn=2, sid=0, mid=0, fsn=1]
++0.0 > sctp: I_DATA[flgs=0, len=1468, tsn=3, sid=0, mid=0, fsn=2]
++0.1 sctp_sendmsg(3, ..., 5001, NULL, 0, htonl(0), SCTP_EOR, 0, 0, 0) = 5000
++0.1 sctp_sendmsg(3, ..., 1, NULL, 0, htonl(0), SCTP_EOR, 0, 0, 0) = -1 EWOULDBLOCK (Resource temporarily unavailable)
++0.0 close(3) = 0
