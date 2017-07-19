@@ -2009,7 +2009,12 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			return (0);
 		}
 		if ((chk_flags & SCTP_DATA_NOT_FRAG) == SCTP_DATA_NOT_FRAG) {
+			struct mbuf *m;
 			control->data = dmbuf;
+			m = control->data;
+			for (m = control->data; m; m = m->m_next) {
+				control->length += SCTP_BUF_LEN(m);
+			}
 			control->tail_mbuf = NULL;
 			control->end_added = 1;
 			control->last_frag_seen = 1;
