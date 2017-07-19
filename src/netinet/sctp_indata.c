@@ -5617,7 +5617,7 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 					ctl->end_added = 1;
 					if (ctl->on_strm_q == SCTP_ON_ORDERED) {
 						TAILQ_REMOVE(&strm->inqueue, ctl, next_instrm);
-						asoc->size_on_all_streams -= control->length;
+						asoc->size_on_all_streams -= ctl->length;
 						sctp_ucount_decr(asoc->cnt_on_all_streams);
 					} else if (ctl->on_strm_q == SCTP_ON_UNORDERED) {
 						TAILQ_REMOVE(&strm->uno_inqueue, ctl, next_instrm);
