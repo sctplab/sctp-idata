@@ -1583,9 +1583,16 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					next_fsn, control->fsn_included);
 				TAILQ_REMOVE(&control->reasm, at, sctp_next);
 				lenadded = sctp_add_chk_to_control(control, strm, stcb, asoc, at, SCTP_READ_LOCK_NOT_HELD);
-				asoc->size_on_all_streams += lenadded;
 				if (control->on_read_q) {
 					do_wakeup = 1;
+				} else {
+					/*
+					 * We only add to the size-on-all-streams
+					 * if its not on the read q. The read q
+					 * flag will cause a sballoc so its accounted
+					 * for there.
+					 */
+					asoc->size_on_all_streams += lenadded;
 				}
 				next_fsn++;
 				if (control->end_added && control->pdapi_started) {
