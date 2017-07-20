@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 318958 2017-05-26 16:29:00Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 321292 2017-07-20 14:50:13Z tuexen $");
 #endif
 
 #ifndef _NETINET_SCTP_OS_BSD_H_
@@ -468,8 +468,8 @@ typedef struct callout sctp_os_timer_t;
 	(sb).sb_mb = NULL;	\
 	(sb).sb_mbcnt = 0;
 
-#define SCTP_SB_LIMIT_RCV(so) so->so_rcv.sb_hiwat
-#define SCTP_SB_LIMIT_SND(so) so->so_snd.sb_hiwat
+#define SCTP_SB_LIMIT_RCV(so) (SOLISTENING(so) ? so->sol_sbrcv_hiwat : so->so_rcv.sb_hiwat)
+#define SCTP_SB_LIMIT_SND(so) (SOLISTENING(so) ? so->sol_sbsnd_hiwat : so->so_snd.sb_hiwat)
 
 /*
  * routes, output, etc.
