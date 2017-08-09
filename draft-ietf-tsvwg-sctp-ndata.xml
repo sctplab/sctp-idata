@@ -76,7 +76,8 @@
 transport protocol supporting arbitrarily large user messages.
 This document adds a new chunk to SCTP for carrying payload data.
 This allows a sender to interleave different user messages that
-would otherwise result in head of line blocking at the sender.</t>
+would otherwise result in head of line blocking at the sender.
+The interleaving of user messages is required for WebRTC Datachannels.</t>
 
 <t>Whenever an SCTP sender is allowed to send user data, it may choose from
 multiple outgoing SCTP streams. Multiple ways for performing this selection,
@@ -116,8 +117,9 @@ The protocol requires all fragments of a user message to have consecutive
 TSNs.
 This document allows an SCTP sender to interleave different user messages.</t>
 <t>This document also defines several stream schedulers for general SCTP
-associations. They can be used with and without user message interleaving
-being negotiated and possibly behave differently.</t>
+associations.
+The stream schedulers may behave differently depending on whether user
+message interleaving has been negotiated for the association or not.</t>
 <t><xref target='RRwithoutMI'/> illustrates the behaviour of a round robin
 stream scheduler using DATA chunks when three streams with the Stream
 Identifiers (SIDs) 0, 1, and 2 are used. Each queue for SID 0 and SID 2 contains
@@ -126,7 +128,10 @@ three user messages each requiring a single chunk. It is shown how these
 user messages are encapsulated in chunk using TSN 0 to TSN 8.
 Please note that the use of such a scheduler implies late TSN assignment but
 it can be used with an <xref target='RFC4960'/> compliant implementation that
-does not support user message interleaving.</t>
+does not support user message interleaving.
+Late TSN assignment means that the sender generates chunks from user messages
+and assigns the TSN as late as possible in the process of sending the user
+messages.</t>
 <figure title='Round Robin Scheduler without User Message Interleaving'
         anchor='RRwithoutMI'>
 <artwork>
@@ -216,8 +221,9 @@ as specified in <xref target='I-D.ietf-rtcweb-data-channel'/>.</t>
 <t>An SCTP implementation supporting user message interleaving is REQUIRED
 to support the coexistence of associations using DATA chunks and associations
 using I-DATA chunks.
-If an SCTP implementation supports user message interleaving and the extension
-described in <xref target='RFC3758'/> or <xref target='RFC6525'/>,
+If an SCTP implementation supports user message interleaving and the Partial
+Reliability extension described in <xref target='RFC3758'/> or the Stream
+Reconfiguration Extension described in <xref target='RFC6525'/>,
 it is REQUIRED to implement the corresponding changes specified in
 <xref target='interactions'/>.</t>
 
@@ -254,7 +260,7 @@ addition of the new Message Identifier (MID) and the new
 Fragment Sequence Number (FSN) and the
 removal of the Stream Sequence Number (SSN).
 The Payload Protocol Identifier (PPID) and the FSN are stored at the
-same location of the packet using the B-bit to determine which value is
+same location of the packet using the B bit to determine which value is
 stored at the location.
 The length of the I-DATA chunk header is 20 bytes, which is 4 bytes more than
 the length of the DATA chunk header defined in <xref target='RFC4960'/>
@@ -283,7 +289,8 @@ Therefore, the sender MUST NOT have more than 2**31 - 1 ordered messages for
 each outgoing stream in flight and MUST NOT have more than 2**31 - 1 unordered
 messages for each outgoing stream in flight.
 A message is considered in flight, if at least on of its I-DATA chunks is not
-acknowledged in a non-renegable way.
+acknowledged in a non-renegable way (i.e. acknowledged by the cumulative
+TSN Ack).
 <!-- For ordered user messages, the lower 16 bit of the MID can be used as a SSN if
 required. -->
 Please note that the MID is in "network byte order", a.k.a. Big Endian.</t>
@@ -298,13 +305,14 @@ In this case the FSN is implicitly considered to be 0.
 If the B bit is not set, this field contains the FSN.
 The FSN is used to enumerate all fragments of a single user message, starting
 from 0 and incremented by 1.
-The last fragment of a message MUST have the 'E' bit set.
+The last fragment of a message MUST have the E bit set.
 Note that the FSN MAY wrap completely multiple times allowing arbitrarily large
 user messages. For the FSN the serial number arithmetic defined in
 <xref target='RFC1982'/> applies with SERIAL_BITS = 32.
 Therefore, a sender MUST NOT have more than 2**31 - 1 fragments of a single user
 message in flight. A fragment is considered in flight, if it is not
-acknowledged in a non-renegable way.
+acknowledged in a non-renegable way (i.e. acknowledged by the cumulative
+TSN Ack).
 
 Please note that the FSN is in "network byte order", a.k.a. Big Endian.</t>
 </list></t>
@@ -347,9 +355,9 @@ can handle interleaved messages before indicating the I-DATA support.</t>
 <t>The sender side usage of the I-DATA chunk is quite simple. Instead
 of using the TSN for fragmentation purposes, the sender uses the
 new FSN field to indicate which fragment number is being sent.
-The first fragment MUST have the 'B' bit set.
-The last fragment MUST have the 'E' bit set.
-All other fragments MUST NOT have the 'B' or 'E' bit set.
+The first fragment MUST have the B bit set.
+The last fragment MUST have the E bit set.
+All other fragments MUST NOT have the B bit or E bit set.
 All other properties of the existing SCTP DATA chunk also apply to
 the I-DATA chunk, i.e. congestion control as well as receiver
 window conditions MUST be observed as defined in <xref target='RFC4960'/>.</t>
@@ -359,7 +367,7 @@ This way messages from other streams may be interleaved with the
 fragmented message. Please note that this is the only form of interleaving
 support. For example, it is not possible to interleave multiple ordered
 or unordered user messages from the same stream.</t>
-<t>The sender MUST NOT be fragmenting more than one user message in any given
+<t>The sender MUST NOT fragment more than one user message in any given
 stream at any time.
 At any time, a sender MAY fragment multiple user messages, each of them on
 different streams.</t>
@@ -375,15 +383,15 @@ identify the stream, consider the U bit to determine if it is part of an ordered
 or unordered message, find the user message identified by the MID and finally
 use the FSN for reassembly of the message and not the TSN.
 The receiver MUST NOT make any assumption about the TSN assignments of the sender.
-Note that a non-fragmented message is indicated by the fact that both the 'E'
-and 'B' bits are set.
+Note that a non-fragmented message is indicated by the fact that both the E and
+B bits are set.
 A message (either ordered or unordered) may be identified as being fragmented
-whose 'E' and 'B' bits are not set both.</t>
+whose E and B bits are not both set.</t>
 <t>If I-DATA support has been negotiated for an association, the reception of
 a DATA chunk is a violation of the above rules and therefore the receiver
 of the DATA chunk MUST abort the association by sending an ABORT chunk.
 The ABORT chunk MAY include the 'Protocol Violation' error cause.
-The same applies if I-DATA support has not be negotiated for an association
+The same applies if I-DATA support has not been negotiated for an association
 and an I-DATA chunk is received.</t>
 </section>
 </section>
@@ -445,7 +453,7 @@ unordered messages (U bit is set) or ordered messages (U bit is not set).</t>
 <t hangText="Message Identifier (MID): 32 bits (unsigned integer)">
 <vspace blankLines="0"/>
 This field holds the largest Message Identifier for ordered or unordered
-messages indicated by the U-bit that was skipped for the stream specified
+messages indicated by the U bit that was skipped for the stream specified
 by the Stream Identifier. For ordered messages this is similar to the
 FORWARD-TSN chunk, just replacing the 16-bit SSN by the 32-bit MID.</t>
 </list></t>
@@ -464,7 +472,7 @@ reception of a FORWARD-TSN chunk is a violation of the above rules and therefore
 the receiver of the FORWARD-TSN chunk MUST abort the association by sending an
 ABORT chunk.
 The ABORT chunk MAY include the 'Protocol Violation' error cause.
-The same applies if I-FORWARD-TSN support has not be negotiated for an
+The same applies if I-FORWARD-TSN support has not been negotiated for an
 association and a FORWARD-TSN chunk is received.</t>
 </section>
 
@@ -517,11 +525,12 @@ only a single stream is affected.</t>
 <section anchor='sctp_ss_prio'
          title='Priority Based Scheduler (SCTP_SS_PRIO)'>
 <t>Scheduling of user messages with strict priorities is used.
-The priority is configurable per outgoing SCTP stream. Streams having a higher
-priority will be scheduled first and when multiple streams have the same
-priority, the scheduling between them is implementation dependent.
-When using user message interleaving, the sending of lower priority user
-messages will not block the sending of higher priority user messages.</t>
+The priority is configurable per outgoing SCTP stream.
+Streams having a higher priority will be scheduled first and when multiple
+streams have the same priority, the scheduling between them is implementation
+dependent.
+When using user message interleaving, the sending of large lower priority user
+messages will not delay the sending of higher priority user messages.</t>
 </section>
 <section anchor='sctp_ss_fb'
          title='Fair Capacity Scheduler (SCTP_SS_FC)'>
@@ -821,6 +830,7 @@ usages there too.</t>
 <section title='Acknowledgments'>
 <t>The authors wish to thank
 Julian Cordes,
+Spencer Dawkins,
 Gorry Fairhurst,
 Lennart Grahl,
 Christer Holmberg,
