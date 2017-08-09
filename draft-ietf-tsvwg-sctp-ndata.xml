@@ -259,7 +259,8 @@ new I-DATA chunk allowing user message interleaving.</t>
 addition of the new Message Identifier (MID) and the new
 Fragment Sequence Number (FSN) and the
 removal of the Stream Sequence Number (SSN).
-The Payload Protocol Identifier (PPID) and the FSN are stored at the
+The Payload Protocol Identifier (PPID) already defined for DATA chunks
+in <xref target='RFC4960'/> and the new FSN are stored at the
 same location of the packet using the B bit to determine which value is
 stored at the location.
 The length of the I-DATA chunk header is 20 bytes, which is 4 bytes more than
