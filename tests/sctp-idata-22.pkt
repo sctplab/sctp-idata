@@ -38,7 +38,7 @@
 +0.0 bind(3, ..., ...) = 0
 +0.0 listen(3, 1) = 0
 // Establish an association supporting I_DATA.
-+0.0 < sctp: INIT[flgs=0, tag=1, a_rwnd=1500, os=1, is=1, tsn=1,
++0.0 < sctp: INIT[flgs=0, tag=1, a_rwnd=10000, os=1, is=1, tsn=1,
                   SUPPORTED_EXTENSIONS[types=[I_DATA]]]
 +0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=..., os=1, is=1, tsn=1, ...]
 +0.1 < sctp: COOKIE_ECHO[flgs=0, len=..., val=...]
@@ -52,7 +52,7 @@
 // Send I_DATA chunk.
 +0.1 send(4, ..., 4, 0) = 4
 +0.0 > sctp: I_DATA[flgs=BE, len=24, tsn=1, sid=0, mid=0, ppid=0]
-+0.0 < sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=1500, gaps=[], dups=[]]
++0.0 < sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=9740, gaps=[], dups=[]]
 // Tear down the association.
 +0.1 < sctp: SHUTDOWN[flgs=0, cum_tsn=1]
 +0.0 > sctp: SHUTDOWN_ACK[flgs=0]

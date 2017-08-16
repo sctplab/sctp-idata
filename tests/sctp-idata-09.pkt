@@ -46,7 +46,8 @@
 +0.0 close(3) = 0
 // Inject two DATA chunks
 +0.1 < sctp: DATA[flgs=UB, len=20, tsn=1, sid=0, ssn=0, ppid=1234]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=10000, gaps=[], dups=[]]
+// No receive call -> buffer is needed
++0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=9996, gaps=[], dups=[]]
 +0.1 < sctp: DATA[flgs=U, len=20, tsn=2, sid=0, ssn=0, ppid=1234]
 +0.0 < sctp: DATA[flgs=E, len=20, tsn=3, sid=0, ssn=0, ppid=1234]
 #ifdef Omnet

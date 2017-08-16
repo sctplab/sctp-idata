@@ -47,8 +47,8 @@
 +0.0 accept(3, ..., ...) = 4
 +0.0 close(3) = 0
 // Receive I_DATA chunk.
-+0.1 < sctp: I_DATA[flgs=B, len=24, tsn=1, sid=0, mid=0, ppid=0]
++0.1 < sctp: I_DATA[flgs=B, len=24, tsn=1, sid=0, mid=0, ppid=0]  // -260
 +0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=9740, gaps=[], dups=[]]
-+0.1 < sctp: I_DATA[flgs=E, len=24, tsn=2, sid=1, mid=0, fsn=1]
++0.1 < sctp: I_DATA[flgs=E, len=24, tsn=2, sid=1, mid=0, fsn=1] // -260
 +0.2 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=9480, gaps=[], dups=[]]
 +0.0 close(4) = 0

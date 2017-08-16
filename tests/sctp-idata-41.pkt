@@ -46,11 +46,11 @@
 +0.0 accept(3, ..., ...) = 4
 +0.0 close(3) = 0
 // Receive fragmented message 2-0-1.
-+0.1 < sctp: I_DATA[flgs=UE, len=24, tsn=1, sid=0, mid=0, fsn=2]
++0.1 < sctp: I_DATA[flgs=UE, len=24, tsn=1, sid=0, mid=0, fsn=2]  // -4-256
 +0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=9740, gaps=[], dups=[]]
-+0.0 < sctp: I_DATA[flgs=UB, len=24, tsn=2, sid=0, mid=0, ppid=0]
-+0.0 < sctp: I_DATA[flgs=U, len=24, tsn=3, sid=0, mid=0, fsn=1]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=3, a_rwnd=9208, gaps=[], dups=[]]
++0.0 < sctp: I_DATA[flgs=UB, len=24, tsn=2, sid=0, mid=0, ppid=0]  // -4-256
++0.0 < sctp: I_DATA[flgs=U, len=24, tsn=3, sid=0, mid=0, fsn=1]   // -260
++0.0 > sctp: SACK[flgs=0, cum_tsn=3, a_rwnd=9220, gaps=[], dups=[]]
 +0.0 recv(4, ..., 100, 0) = 12
 // Tear down the association.
 +0.1 < sctp: SHUTDOWN[flgs=0, cum_tsn=0]
