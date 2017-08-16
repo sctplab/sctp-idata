@@ -33,19 +33,20 @@
                                                 sinit_max_instreams=2,
                                                 sinit_max_attempts=0,
                                                 sinit_max_init_timeo=0}, 8) = 0
++0.0 setsockopt(3, SOL_SOCKET, SO_RCVBUF, [10000], 4) = 0
 +0.0 bind(3, ..., ...) = 0
 +0.0 listen(3, 1) = 0
 // Establish an association not supporting I_DATA.
 +0.0 < sctp: INIT[flgs=0, tag=1, a_rwnd=1500, os=2, is=2, tsn=1,
                   SUPPORTED_EXTENSIONS[types=[I_DATA]]]
-+0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=..., os=2, is=2, tsn=1, ...]
++0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=10000, os=2, is=2, tsn=1, ...]
 +0.1 < sctp: COOKIE_ECHO[flgs=0, len=..., val=...]
 +0.0 > sctp: COOKIE_ACK[flgs=0]
 +0.0 accept(3, ..., ...) = 4
 +0.0 close(3) = 0
 // Inject the first I_DATA chunk.
 +0.1 < sctp: DATA[flgs=B, len=20, tsn=1, sid=0, ssn=0, ppid=1234]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=..., gaps=[], dups=[]]
++0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=9740, gaps=[], dups=[]]
 +0.1 < sctp: DATA[flgs=E, len=20, tsn=2, sid=1, ssn=0, ppid=1234]
 #ifdef Omnet
 +0.0 > sctp: ABORT[flgs=0]
