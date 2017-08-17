@@ -35,11 +35,12 @@
 +0.0 `sysctl -w net.inet.sctp.pktdrop_enable=0`
 
 +0.0 socket(..., SOCK_STREAM, IPPROTO_SCTP) = 3
+0.0 setsockopt(3, SOL_SOCKET, SO_RCVBUF, [10000], 4) = 0
 +0.0 bind(3, ..., ...) = 0
 +0.0 listen(3, 1) = 0
 +0.0 < sctp: INIT[flgs=0, tag=1, a_rwnd=1500, os=1, is=1, tsn=1,
                   FORWARD_TSN_SUPPORTED[]]
-+0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=..., os=..., is=..., tsn=1,
++0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=10000, os=..., is=..., tsn=1,
                       FORWARD_TSN_SUPPORTED[],
                       SUPPORTED_EXTENSIONS[types=[FORWARD_TSN]],
                       STATE_COOKIE[len=..., val=...]]
@@ -51,10 +52,10 @@
 +0.0 fcntl(4, F_SETFL, O_RDWR|O_NONBLOCK) = 0
 // Assume that the first user message is dropped.
 // Receive than the second complete fragmented unordered user message
-+0.0 < sctp: DATA[flgs=UB, len=1016, tsn=3, sid=0, ssn=0, ppid=2]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=0, a_rwnd=..., gaps=[3:3], dups=[]]
-+0.0 < sctp: DATA[flgs=UE, len=1016, tsn=4, sid=0, ssn=0, ppid=2]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=0, a_rwnd=..., gaps=[3:4], dups=[]]
++0.0 < sctp: DATA[flgs=UB, len=1016, tsn=3, sid=0, ssn=0, ppid=2] // -256-1000
++0.0 > sctp: SACK[flgs=0, cum_tsn=0, a_rwnd=8744, gaps=[3:3], dups=[]]
++0.0 < sctp: DATA[flgs=UE, len=1016, tsn=4, sid=0, ssn=0, ppid=2] // -256-1000
++0.0 > sctp: SACK[flgs=0, cum_tsn=0, a_rwnd=7488, gaps=[3:4], dups=[]]
 +0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
                                            sinfo_ssn=...,
                                            sinfo_flags=SCTP_UNORDERED,
@@ -65,11 +66,11 @@
                                            sinfo_cumtsn=...,
                                            sinfo_assoc_id=...}, MSG_EOR) = 2000
 // Receive a third message
-+0.0 < sctp: DATA[flgs=UB, len=1016, tsn=5, sid=0, ssn=0, ppid=3]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=0, a_rwnd=..., gaps=[3:5], dups=[]]
++0.0 < sctp: DATA[flgs=UB, len=1016, tsn=5, sid=0, ssn=0, ppid=3] // -256-1000
++0.0 > sctp: SACK[flgs=0, cum_tsn=0, a_rwnd=8744, gaps=[3:5], dups=[]]
 +0.1 < sctp: FORWARD_TSN[cum_tsn=2, ids=[]];
-             DATA[flgs=UE, len=1016, tsn=6, sid=0, ssn=0, ppid=3]
-+0.2 > sctp: SACK[flgs=0, cum_tsn=6, a_rwnd=..., gaps=[], dups=[]]
+             DATA[flgs=UE, len=1016, tsn=6, sid=0, ssn=0, ppid=3] // -256-1000
++0.2 > sctp: SACK[flgs=0, cum_tsn=6, a_rwnd=7488, gaps=[], dups=[]]
 +0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
                                            sinfo_ssn=...,
                                            sinfo_flags=SCTP_UNORDERED,

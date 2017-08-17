@@ -34,11 +34,12 @@
 +0.0 `sysctl -w net.inet.sctp.nrsack_enable=0`
 +0.0 `sysctl -w net.inet.sctp.pktdrop_enable=0`
 +0.0 socket(..., SOCK_STREAM, IPPROTO_SCTP) = 3
-// Check the handshake with en empty(!) cookie
+// Check the handshake with an empty(!) cookie
+0.0 setsockopt(3, SOL_SOCKET, SO_RCVBUF, [10000], 4) = 0
 +0.0 bind(3, ..., ...) = 0
 +0.0 listen(3, 1) = 0
 +0.0 < sctp: INIT[flgs=0, tag=1, a_rwnd=1500, os=1, is=1, tsn=1]
-+0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=..., os=..., is=..., tsn=1,
++0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=10000, os=..., is=..., tsn=1,
                       STATE_COOKIE[len=..., val=...]]
 +0.1 < sctp: COOKIE_ECHO[flgs=0, len=..., val=...]
 +0.0 > sctp: COOKIE_ACK[flgs=0]
@@ -47,9 +48,9 @@
 +0.0 fcntl(4, F_GETFL) = 0x2 (flags O_RDWR)
 +0.0 fcntl(4, F_SETFL, O_RDWR|O_NONBLOCK) = 0
 // Insert a complete unordered message first
-+0.0 < sctp: DATA[flgs=UB, len=1460, tsn=1, sid=0, ssn=0, ppid=0]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=..., gaps=[], dups=[]]
-+0.0 < sctp: DATA[flgs=UE, len=1372, tsn=2, sid=0, ssn=0, ppid=0]
++0.0 < sctp: DATA[flgs=UB, len=1460, tsn=1, sid=0, ssn=0, ppid=0] // -1700
++0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=10000, gaps=[], dups=[]]
++0.0 < sctp: DATA[flgs=UE, len=1372, tsn=2, sid=0, ssn=0, ppid=0] // -1612
 +0.0 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
                                            sinfo_ssn=...,
                                            sinfo_flags=SCTP_UNORDERED,
@@ -61,12 +62,12 @@
                                            sinfo_assoc_id=...}, MSG_EOR) = 2800
 // Assume that the first fragment of the second unordered message is lost
 // and inject the rest for a total of two unordered messages.
-+0.0 < sctp: DATA[flgs=UE, len=1373, tsn=4, sid=0, ssn=0, ppid=1]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[2:2], dups=[]]
-+0.0 < sctp: DATA[flgs=UB, len=1460, tsn=5, sid=0, ssn=0, ppid=2]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[2:3], dups=[]]
-+0.0 < sctp: DATA[flgs=UE, len=1374, tsn=6, sid=0, ssn=0, ppid=2]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[2:4], dups=[]]
++0.0 < sctp: DATA[flgs=UE, len=1373, tsn=4, sid=0, ssn=0, ppid=1] // -1613
++0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=8387, gaps=[2:2], dups=[]]
++0.0 < sctp: DATA[flgs=UB, len=1460, tsn=5, sid=0, ssn=0, ppid=2] // -1700
++0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=6687, gaps=[2:3], dups=[]]
++0.0 < sctp: DATA[flgs=UE, len=1374, tsn=6, sid=0, ssn=0, ppid=2] // -1614
++0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=5073, gaps=[2:4], dups=[]]
 //+0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
 //                                           sinfo_ssn=...,
 //                                           sinfo_flags=SCTP_UNORDERED,
@@ -76,8 +77,8 @@
 //                                           sinfo_tsn=5,
 //                                           sinfo_cumtsn=...,
 //                                           sinfo_assoc_id=...}, MSG_EOR) = 2800
-+0.0 < sctp: DATA[flgs=UB, len=1460, tsn=3, sid=0, ssn=0, ppid=1]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=6, a_rwnd=..., gaps=[], dups=[]]
++0.0 < sctp: DATA[flgs=UB, len=1460, tsn=3, sid=0, ssn=0, ppid=1] // -1700
++0.0 > sctp: SACK[flgs=0, cum_tsn=6, a_rwnd=3373, gaps=[], dups=[]]
 //+0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
 //                                           sinfo_ssn=...,
 //                                           sinfo_flags=SCTP_UNORDERED,

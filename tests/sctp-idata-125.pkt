@@ -35,10 +35,11 @@
 +0.0 `sysctl -w net.inet.sctp.pktdrop_enable=0`
 +0.0 socket(..., SOCK_STREAM, IPPROTO_SCTP) = 3
 // Check the handshake with en empty(!) cookie
+0.0 setsockopt(3, SOL_SOCKET, SO_RCVBUF, [10000], 4) = 0
 +0.0 bind(3, ..., ...) = 0
 +0.0 listen(3, 1) = 0
 +0.0 < sctp: INIT[flgs=0, tag=1, a_rwnd=1500, os=1, is=1, tsn=1]
-+0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=..., os=..., is=..., tsn=1,
++0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=10000, os=..., is=..., tsn=1,
                       STATE_COOKIE[len=..., val=...]]
 +0.1 < sctp: COOKIE_ECHO[flgs=0, len=..., val=...]
 +0.0 > sctp: COOKIE_ACK[flgs=0]
@@ -47,11 +48,11 @@
 +0.0 fcntl(4, F_GETFL) = 0x2 (flags O_RDWR)
 +0.0 fcntl(4, F_SETFL, O_RDWR|O_NONBLOCK) = 0
 // Two unordered messages, a complete followed by a fragmented: 1-2-3
-+0.0 < sctp: DATA[flgs=UBE, len=1016, tsn=1, sid=0, ssn=0, ppid=1]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=..., gaps=[], dups=[]]
-+0.0 < sctp: DATA[flgs=UB, len=1017, tsn=2, sid=0, ssn=0, ppid=2]
-+0.0 < sctp: DATA[flgs=UE, len=1026, tsn=3, sid=0, ssn=0, ppid=2]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=3, a_rwnd=..., gaps=[], dups=[]]
++0.0 < sctp: DATA[flgs=UBE, len=1016, tsn=1, sid=0, ssn=0, ppid=1] // -256-1000
++0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=8744, gaps=[], dups=[]]
++0.0 < sctp: DATA[flgs=UB, len=1017, tsn=2, sid=0, ssn=0, ppid=2] // -256-1001
++0.0 < sctp: DATA[flgs=UE, len=1026, tsn=3, sid=0, ssn=0, ppid=2] // -256-1010
++0.0 > sctp: SACK[flgs=0, cum_tsn=3, a_rwnd=6221, gaps=[], dups=[]]
 // Check reassembly by looking the length.
 +0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
                                            sinfo_ssn=...,

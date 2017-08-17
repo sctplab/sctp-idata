@@ -34,29 +34,30 @@
                                                 sinit_max_instreams=1,
                                                 sinit_max_attempts=0,
                                                 sinit_max_init_timeo=0}, 8) = 0
+0.0 setsockopt(3, SOL_SOCKET, SO_RCVBUF, [10000], 4) = 0
 +0.0 bind(3, ..., ...) = 0
 +0.0 listen(3, 1) = 0
 // Establish an association.
 +0.0 < sctp: INIT[flgs=0, tag=1, a_rwnd=60000, os=1, is=1, tsn=1]
-+0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=..., os=1, is=1, tsn=1, ...]
++0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=10000, os=1, is=1, tsn=1, ...]
 +0.1 < sctp: COOKIE_ECHO[flgs=0, len=..., val=...]
 +0.0 > sctp: COOKIE_ACK[flgs=0]
 +0.0 accept(3, ..., ...) = 4
 +0.0 close(3) = 0
-+0.00 < sctp: DATA[flgs=BE, len=116, tsn=1, sid=0, ssn=0, ppid=3]
++0.00 < sctp: DATA[flgs=BE, len=116, tsn=1, sid=0, ssn=0, ppid=3] // -356
 +0.00 recv(4, ..., 200, 0) = 100
-+0.00 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=..., gaps=[], dups=[]]
-+0.05 < sctp: DATA[flgs=BE, len=116, tsn=2, sid=0, ssn=1, ppid=3]
++0.00 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=10000, gaps=[], dups=[]]
++0.05 < sctp: DATA[flgs=BE, len=116, tsn=2, sid=0, ssn=1, ppid=3] // -356
 +0.00 recv(4, ..., 200, 0) = 100
-+0.05 < sctp: DATA[flgs=BE, len=116, tsn=3, sid=0, ssn=2, ppid=3]
++0.05 < sctp: DATA[flgs=BE, len=116, tsn=3, sid=0, ssn=2, ppid=3] // -356
 +0.00 recv(4, ..., 200, 0) = 100
-+0.00 > sctp: SACK[flgs=0, cum_tsn=3, a_rwnd=..., gaps=[], dups=[]]
-+0.05 < sctp: DATA[flgs=BE, len=116, tsn=4, sid=0, ssn=3, ppid=3]
++0.00 > sctp: SACK[flgs=0, cum_tsn=3, a_rwnd=10000, gaps=[], dups=[]]
++0.05 < sctp: DATA[flgs=BE, len=116, tsn=4, sid=0, ssn=3, ppid=3] // -356
 +0.00 recv(4, ..., 200, 0) = 100
-+0.20 > sctp: SACK[flgs=0, cum_tsn=4, a_rwnd=..., gaps=[], dups=[]]
-+0.05 < sctp: DATA[flgs=IBE, len=116, tsn=5, sid=0, ssn=4, ppid=3]
++0.20 > sctp: SACK[flgs=0, cum_tsn=4, a_rwnd=10000, gaps=[], dups=[]]
++0.05 < sctp: DATA[flgs=IBE, len=116, tsn=5, sid=0, ssn=4, ppid=3] // -356
 +0.00 recv(4, ..., 200, 0) = 100
-+0.00 > sctp: SACK[flgs=0, cum_tsn=5, a_rwnd=..., gaps=[], dups=[]]
++0.00 > sctp: SACK[flgs=0, cum_tsn=5, a_rwnd=10000, gaps=[], dups=[]]
 // Tear down the association.
 +0.0 close(4) = 0
 +0.0 > sctp: SHUTDOWN[flgs=0, cum_tsn=5]

@@ -35,6 +35,7 @@
                                                 sinit_max_instreams=1,
                                                 sinit_max_attempts=0,
                                                 sinit_max_init_timeo=0}, 8) = 0
++0.0 setsockopt(3, SOL_SOCKET, SO_RCVBUF, [10000], 4) = 0
 +0.0 bind(3, ..., ...) = 0
 +0.0 listen(3, 1) = 0
 // Establish an association supporting I_DATA.
@@ -46,15 +47,15 @@
 +0.0 accept(3, ..., ...) = 4
 +0.0 close(3) = 0
 // Receive fragmented message 0-O-2-1.
-+0.1 < sctp: I_DATA[flgs=B, len=24, tsn=1, sid=0, mid=0, ppid=0]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=..., gaps=[], dups=[]]
-+0.0 < sctp: I_DATA[flgs=BE, len=24, tsn=2, sid=0, mid=1, ppid=0]
-+0.0 < sctp: I_DATA[flgs=E, len=24, tsn=3, sid=0, mid=0, fsn=2]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=3, a_rwnd=..., gaps=[], dups=[]]
-+0.0 < sctp: I_DATA[flgs=0, len=24, tsn=4, sid=0, mid=0, fsn=1]
++0.1 < sctp: I_DATA[flgs=B, len=24, tsn=1, sid=0, mid=0, ppid=0] // -260
++0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=9740, gaps=[], dups=[]]
++0.0 < sctp: I_DATA[flgs=BE, len=24, tsn=2, sid=0, mid=1, ppid=0] // -260
++0.0 < sctp: I_DATA[flgs=E, len=24, tsn=3, sid=0, mid=0, fsn=2] // -260
++0.0 > sctp: SACK[flgs=0, cum_tsn=3, a_rwnd=9220, gaps=[], dups=[]]
++0.0 < sctp: I_DATA[flgs=0, len=24, tsn=4, sid=0, mid=0, fsn=1] // -4
 +0.0 recv(4, ..., 100, 0) = 12
 +0.0 recv(4, ..., 100, 0) = 4
-+0.2 > sctp: SACK[flgs=0, cum_tsn=4, a_rwnd=..., gaps=[], dups=[]]
++0.2 > sctp: SACK[flgs=0, cum_tsn=4, a_rwnd=10000, gaps=[], dups=[]]
 // Tear down the association.
 +0.1 < sctp: SHUTDOWN[flgs=0, cum_tsn=0]
 +0.0 > sctp: SHUTDOWN_ACK[flgs=0]

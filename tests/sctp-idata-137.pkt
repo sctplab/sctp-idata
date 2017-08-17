@@ -37,20 +37,21 @@
 // Setup the association with I-DATA support enabled
 +0.0 socket(..., SOCK_STREAM, IPPROTO_SCTP) = 3
 +0.0 setsockopt(3, IPPROTO_SCTP, SCTP_RECVRCVINFO, [1], 4) = 0
+0.0 setsockopt(3, SOL_SOCKET, SO_RCVBUF, [10000], 4) = 0
 +0.0 bind(3, ..., ...) = 0
 +0.0 listen(3, 1) = 0
 +0.0 < sctp: INIT[flgs=0, tag=1, a_rwnd=15000, os=16, is=16, tsn=1]
-+0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=..., os=..., is=..., tsn=1,
++0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=10000, os=..., is=..., tsn=1,
                       STATE_COOKIE[len=..., val=...]]
 +0.1 < sctp: COOKIE_ECHO[flgs=0, len=..., val=...]
 +0.0 > sctp: COOKIE_ACK[flgs=0]
 +0.0 accept(3, ..., ...) = 4
 +0.0 close(3) = 0
 // Inject two fragements in the wrong order
-+0.0 < sctp: DATA[flgs=UE, len=1016, tsn=2, sid=0, ssn=0, ppid=1]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=0, a_rwnd=..., gaps=[2:2], dups=[]]
-+0.0 < sctp: DATA[flgs=UB, len=1016, tsn=1, sid=0, ssn=0, ppid=1234]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[], dups=[]]
++0.0 < sctp: DATA[flgs=UE, len=1016, tsn=2, sid=0, ssn=0, ppid=1] // -256-1000
++0.0 > sctp: SACK[flgs=0, cum_tsn=0, a_rwnd=8744, gaps=[2:2], dups=[]]
++0.0 < sctp: DATA[flgs=UB, len=1016, tsn=1, sid=0, ssn=0, ppid=1234] // -256-1000
++0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=7488, gaps=[], dups=[]]
 +0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
                                            sinfo_ssn=0,
                                            sinfo_flags=SCTP_UNORDERED,

@@ -37,11 +37,12 @@
 +0.0 socket(..., SOCK_STREAM, IPPROTO_SCTP) = 3
 +0.0 setsockopt(3, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, [2], 4) = 0
 +0.0 setsockopt(3, IPPROTO_SCTP, SCTP_INTERLEAVING_SUPPORTED, {assoc_value=1}, 8) = 0
+0.0 setsockopt(3, SOL_SOCKET, SO_RCVBUF, [10000], 4) = 0
 +0.0 bind(3, ..., ...) = 0
 +0.0 listen(3, 1) = 0
 +0.0 < sctp: INIT[flgs=0, tag=1, a_rwnd=1500, os=1, is=1, tsn=1,
                   FORWARD_TSN_SUPPORTED[], SUPPORTED_EXTENSIONS[types=[I_DATA, I_FORWARD_TSN]]]
-+0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=..., os=..., is=..., tsn=1,
++0.0 > sctp: INIT_ACK[flgs=0, tag=2, a_rwnd=10000, os=..., is=..., tsn=1,
                       FORWARD_TSN_SUPPORTED[],
                       SUPPORTED_EXTENSIONS[types=[FORWARD_TSN, I_FORWARD_TSN, I_DATA]],
                       STATE_COOKIE[len=..., val=...]]
@@ -53,9 +54,9 @@
 +0.0 fcntl(4, F_SETFL, O_RDWR|O_NONBLOCK) = 0
 
 // Receive the first complete fragmented unordered user message
-+0.0 < sctp: I_DATA[flgs=UB, len=1020, tsn=1, sid=0, mid=0, ppid=1]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=..., gaps=[], dups=[]]
-+0.0 < sctp: I_DATA[flgs=UE, len=1020, tsn=2, sid=0, mid=0, fsn=1]
++0.0 < sctp: I_DATA[flgs=UB, len=1020, tsn=1, sid=0, mid=0, ppid=1] // -256-1000
++0.0 > sctp: SACK[flgs=0, cum_tsn=1, a_rwnd=8744, gaps=[], dups=[]]
++0.0 < sctp: I_DATA[flgs=UE, len=1020, tsn=2, sid=0, mid=0, fsn=1] // -256-1000
 +0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
                                            sinfo_ssn=...,
                                            sinfo_flags=SCTP_UNORDERED,
@@ -66,13 +67,13 @@
                                            sinfo_cumtsn=...,
                                            sinfo_assoc_id=...}, MSG_EOR) = 2000
 // Receive the last fragment of the second unordered user message
-+0.0 < sctp: I_DATA[flgs=UE, len=1020, tsn=4, sid=0, mid=1, fsn=1]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[2:2], dups=[]]
++0.0 < sctp: I_DATA[flgs=UE, len=1020, tsn=4, sid=0, mid=1, fsn=1] // -256-1000
++0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=8744, gaps=[2:2], dups=[]]
 // Receive the third complete fragmented unordered user message
-+0.1 < sctp: I_DATA[flgs=UB, len=1017, tsn=5, sid=0, mid=2, ppid=3]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[2:3], dups=[]]
-+0.1 < sctp: I_DATA[flgs=UE, len=1020, tsn=6, sid=0, mid=2, fsn=1]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[2:4], dups=[]]
++0.1 < sctp: I_DATA[flgs=UB, len=1017, tsn=5, sid=0, mid=2, ppid=3] // -256-997
++0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=7491, gaps=[2:3], dups=[]]
++0.1 < sctp: I_DATA[flgs=UE, len=1020, tsn=6, sid=0, mid=2, fsn=1] // -256-1000
++0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=6235, gaps=[2:4], dups=[]]
 +0.1 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
                                            sinfo_ssn=...,
                                            sinfo_flags=SCTP_UNORDERED,
@@ -84,12 +85,12 @@
                                            sinfo_assoc_id=...}, MSG_EOR) = 1997
 // ??? Why isn't the third user message ready for delivery at this point of time?
 // Receive the first fragtment of the fourth unordered user message
-+0.1 < sctp: I_DATA[flgs=UB, len=1020, tsn=7, sid=0, mid=3, ppid=4]
-+0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=..., gaps=[2:5], dups=[]]
++0.1 < sctp: I_DATA[flgs=UB, len=1020, tsn=7, sid=0, mid=3, ppid=4] // -256-1000
++0.0 > sctp: SACK[flgs=0, cum_tsn=2, a_rwnd=7488, gaps=[2:5], dups=[]]
 // Now abandon the second user message and receive the last fragment of the fourth unordered user message
 +0.1 < sctp: I_FORWARD_TSN[cum_tsn=4, ids=[{0, 1, 1}]];
-             I_DATA[flgs=UE, len=1018, tsn=8, sid=0, mid=3, fsn=1]
-+0.2 > sctp: SACK[flgs=0, cum_tsn=8, a_rwnd=..., gaps=[], dups=[]]
+             I_DATA[flgs=UE, len=1018, tsn=8, sid=0, mid=3, fsn=1] // -256-998
++0.2 > sctp: SACK[flgs=0, cum_tsn=8, a_rwnd=7490, gaps=[], dups=[]]
 // ??? Why isn't the fourth user message ready for delivery at this time?
 +0.0 sctp_recvmsg(4, ..., 6000, ..., ..., {sinfo_stream=0,
                                            sinfo_ssn=...,
