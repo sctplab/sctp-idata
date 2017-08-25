@@ -321,6 +321,8 @@ Please note that the FSN is in "network byte order", a.k.a. Big Endian.</t>
 <section title='Procedures'>
 <t>This subsection describes how the support of the I-DATA chunk is negotiated
 and how the I-DATA chunk is used by the sender and receiver.</t>
+<t>The handling of the I bit for the I-DATA chunk corresponds to the handling
+of the I bit for the DATA chunk described in <xref target='RFC7053'/>.</t>
 <section title='Negotiation'>
 <t>An SCTP end point indicates user message interleaving support by listing
 the I-DATA Chunk within the Supported Extensions Parameter as defined in
