@@ -290,7 +290,7 @@ Therefore, the sender MUST NOT have more than 2**31 - 1 ordered messages for
 each outgoing stream in flight and MUST NOT have more than 2**31 - 1 unordered
 messages for each outgoing stream in flight.
 A message is considered in flight, if at least on of its I-DATA chunks is not
-acknowledged in a non-renegable way (i.e. acknowledged by the cumulative
+acknowledged in a non-renegable way (i.e. not acknowledged by the cumulative
 TSN Ack).
 <!-- For ordered user messages, the lower 16 bit of the MID can be used as a SSN if
 required. -->
@@ -312,8 +312,7 @@ user messages. For the FSN the serial number arithmetic defined in
 <xref target='RFC1982'/> applies with SERIAL_BITS = 32.
 Therefore, a sender MUST NOT have more than 2**31 - 1 fragments of a single user
 message in flight. A fragment is considered in flight, if it is not
-acknowledged in a non-renegable way (i.e. acknowledged by the cumulative
-TSN Ack).
+acknowledged in a non-renegable way.
 
 Please note that the FSN is in "network byte order", a.k.a. Big Endian.</t>
 </list></t>
