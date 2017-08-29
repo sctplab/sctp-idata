@@ -188,8 +188,9 @@ round robin stream scheduler using I-DATA chunks.</t>
 </figure>
 <t>The support of the I-DATA chunk is negotiated during the association setup
 using the Supported Extensions Parameter as defined in
-<xref target='RFC5061'/>. If I-DATA support has been negotiated for an
-association I-DATA chunks are used for all user-messages.
+<xref target='RFC5061'/>.
+If I-DATA support has been negotiated for an association, I-DATA chunks are
+used for all user-messages.
 DATA chunks are not permitted when I-DATA support has been negotiated.
 It should be noted that an SCTP implementation supporting I-DATA chunks needs
 to allow the coexistence of associations using DATA chunks and associations
@@ -236,7 +237,7 @@ new I-DATA chunk allowing user message interleaving.</t>
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|   Type = 64   |  Res  |I|U|B|E|           Length              |
+|   Type = 64   |  Res  |I|U|B|E|       Length = Variable       |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                              TSN                              |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -266,6 +267,47 @@ stored at the location.
 The length of the I-DATA chunk header is 20 bytes, which is 4 bytes more than
 the length of the DATA chunk header defined in <xref target='RFC4960'/>
 and <xref target='RFC7053'/>.</t>
+
+<t>The old fields are:
+<list style="hanging">
+<t hangText="Res: 4 bits">
+<vspace blankLines="0"/>
+These bits are reserved.
+They MUST be set to 0 by the sender and MUST be ignored by the receiver.</t>
+<t hangText="I bit: 1 bit">
+<vspace blankLines="0"/>
+The (I)mmediate Bit, if set, indicates that the receiver SHOULD NOT delay the
+sending of the corresponding SACK chunk.
+Same as the I bit for DATA chunks as specified in <xref target='RFC7053'/>.</t>
+<t hangText="U bit: 1 bit">
+<vspace blankLines="0"/>
+The (U)nordered bit, if set, indicates the user message is unordered.
+Same as the U bit for DATA chunks as specified in <xref target='RFC4960'/>.</t>
+<t hangText="B bit: 1 bit">
+<vspace blankLines="0"/>
+The (B)eginning fragment bit, if set, indicates the first fragment of a user
+message.
+Same as the B bit for DATA chunks as specified in <xref target='RFC4960'/>.</t>
+<t hangText="E bit: 1 bit">
+<vspace blankLines="0"/>
+The (E)nding fragment bit, if set, indicates the last fragment of a user
+message.
+Same as the E bit for DATA chunks as specified in <xref target='RFC4960'/>.</t>
+<t hangText="Length: 16 bits (unsigned integer)">
+<vspace blankLines="0"/>
+This field indicates the length of the DATA chunk in bytes from the beginning
+of the type field to the end of the User Data field excluding any padding.
+Similar to the Length for DATA chunks as specified in <xref target='RFC4960'/>.</t>
+<t hangText="TSN: 32 bits (unsigned integer)">
+<vspace blankLines="0"/>
+This value represents the TSN for this I-DATA chunk.
+Same as the TSN for DATA chunks as specified in <xref target='RFC4960'/>.</t>
+<t hangText="Stream Identifier: 16 bits (unsigned integer)">
+<vspace blankLines="0"/>
+Identifies the stream to which the user data belongs.
+Same as the Stream Identifier for DATA chunks as specified in
+<xref target='RFC4960'/>.</t>
+</list></t>
 
 <t>The new fields are:
 <list style="hanging">
@@ -369,9 +411,9 @@ This way messages from other streams may be interleaved with the
 fragmented message. Please note that this is the only form of interleaving
 support. For example, it is not possible to interleave multiple ordered
 or unordered user messages from the same stream.</t>
-<t>The sender MUST NOT fragment more than one user message in any given
+<t>The sender MUST NOT assign TSNs to more than one user message in any given
 stream at any time.
-At any time, a sender MAY fragment multiple user messages, each of them on
+At any time, a sender MAY assign TSNs to multiple user messages, each of them on
 different streams.</t>
 <t>The sender MUST assign TSNs in a way that the receiver can make progress.
 One way to achieve this is to assign a higher TSN to the later fragments of
@@ -439,7 +481,26 @@ chunks.</t>
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 </artwork>
 </figure>
-<t>The relevant new fields are:
+<t>The old fields are:
+<list style="hanging">
+<t hangText="Flags: 8-bits (unsigned integer)">
+<vspace blankLines="0"/>
+These bits are reserved.
+They MUST be set to 0 by the sender and MUST be ignored by the receiver.
+Same as the Flags for FORWARD TSN chunks as specified in
+<xref target='RFC3758'/>.</t>
+<t hangText="Length: 16-bits (unsigned integer)">
+<vspace blankLines="0"/>
+This field holds the length of the chunk.
+Similar to the Length for FORWARD TSN chunks as specified in
+<xref target='RFC3758'/>.</t>
+<t hangText="New Cummulative TSN: 32-bits (unsigned integer)">
+<vspace blankLines="0"/>
+This indicates the new cumulative TSN to the data receiver.
+Same as the New Cummulative TSN for FORWARD TSN chunks as specified in
+<xref target='RFC3758'/>.</t>
+</list></t>
+<t>The new fields are:
 <list style="hanging">
 <t hangText="Stream Identifier (SID): 16-bits (unsigned integer)">
 <vspace blankLines="0"/>
@@ -820,9 +881,10 @@ in addition to the ones given in <xref target='RFC4960'/> and
 <xref target='RFC6458'/>.</t>
 <t>It should be noted that the application has to consent that it is willing
 to do the more complex reassembly support required for user message
-interleaving. When doing so, an application has to provide up to two reassembly
-buffers (one for ordered messages, one for unordered messages) for each incoming
-stream. It has to protect itself against these buffers taking too many resources.
+interleaving.
+When doing so, an application has to provide a reassembly buffer for each
+incoming stream.
+It has to protect itself against these buffers taking too many resources.
 If user message interleaving is not used, only a single reassembly buffer needs
 to be provided for each association.
 But the application has to protect itself for excessive resource
@@ -836,9 +898,11 @@ Spencer Dawkins,
 Gorry Fairhurst,
 Lennart Grahl,
 Christer Holmberg,
+Mirja Kuehlewind,
 Marcelo Ricardo Leitner,
 Karen E. Egede Nielsen,
 Maksim Proshin,
+Eric Rescorla,
 Irene Ruengeler,
 Felix Weinrank,
 Michael Welzl,
