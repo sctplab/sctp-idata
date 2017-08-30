@@ -80,8 +80,9 @@ would otherwise result in head of line blocking at the sender.
 The interleaving of user messages is required for WebRTC Datachannels.</t>
 
 <t>Whenever an SCTP sender is allowed to send user data, it may choose from
-multiple outgoing SCTP streams. Multiple ways for performing this selection,
-called stream schedulers, are defined.
+multiple outgoing SCTP streams.
+Multiple ways for performing this selection, called stream schedulers, are
+defined in this document.
 A stream scheduler can choose to either implement, or not implement,
 user message interleaving.</t>
 </abstract>
