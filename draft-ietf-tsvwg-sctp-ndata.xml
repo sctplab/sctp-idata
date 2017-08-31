@@ -323,9 +323,9 @@ determine which fragments (enumerated by the FSN) belong to the same user
 message. For ordered user messages, the MID is also used by the SCTP receiver
 to deliver the user messages in the correct order to the upper layer (similar
 to the SSN of the DATA chunk defined in <xref target='RFC4960'/>).
-The sender uses two counters for each outgoing stream,
+The sender uses for each outgoing stream two counters,
 one for ordered messages, one for unordered messages.
-All counters are independent and initially 0.
+All of these counters are independent and initially 0.
 They are incremented by 1 for each user message.
 Please note that the serial number arithmetic defined in
 <xref target='RFC1982'/> using SERIAL_BITS = 32 applies.
