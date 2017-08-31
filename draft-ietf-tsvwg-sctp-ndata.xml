@@ -103,7 +103,7 @@ Unfortunately this design decision, though valid at the time, did not account
 for other applications that might send large messages over SCTP.
 The sending of such large messages over SCTP as specified in
 <xref target='RFC4960'/> can result in a form of sender side head of line
-blocking (e.g., when the transmission of an urgent message is blocked from
+blocking (e.g., when the transmission of a message is blocked from
 transmission because the sender has started the transmission of another,
 possibly large, message).
 This head of line blocking is caused by the use of the Transmission Sequence
@@ -118,7 +118,7 @@ The protocol requires all fragments of a user message to have consecutive
 TSNs.
 This document allows an SCTP sender to interleave different user messages.</t>
 <t>This document also defines several stream schedulers for general SCTP
-associations.
+associations allowing different relative stream treatments.
 The stream schedulers may behave differently depending on whether user
 message interleaving has been negotiated for the association or not.</t>
 <t><xref target='RRwithoutMI'/> illustrates the behaviour of a round robin
