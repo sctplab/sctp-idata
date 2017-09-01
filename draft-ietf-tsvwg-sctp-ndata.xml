@@ -499,10 +499,10 @@ Same as the Flags for FORWARD TSN chunks as specified in
 This field holds the length of the chunk.
 Similar to the Length for FORWARD TSN chunks as specified in
 <xref target='RFC3758'/>.</t>
-<t hangText="New Cummulative TSN: 32-bits (unsigned integer)">
+<t hangText="New Cumulative TSN: 32-bits (unsigned integer)">
 <vspace blankLines="0"/>
 This indicates the new cumulative TSN to the data receiver.
-Same as the New Cummulative TSN for FORWARD TSN chunks as specified in
+Same as the New Cumulative TSN for FORWARD TSN chunks as specified in
 <xref target='RFC3758'/>.</t>
 </list></t>
 <t>The new fields are:
