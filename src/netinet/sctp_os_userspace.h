@@ -989,11 +989,6 @@ int sctp_userspace_get_mtu_from_ifn(uint32_t if_index, int af);
 #define SCTP_SB_LIMIT_RCV(so) so->so_rcv.sb_hiwat
 #define SCTP_SB_LIMIT_SND(so) so->so_snd.sb_hiwat
 
-/* Future zero copy wakeup/send  function */
-#define SCTP_ZERO_COPY_EVENT(inp, so)
-/* This is re-pulse ourselves for sendbuf */
-#define SCTP_ZERO_COPY_SENDQ_EVENT(inp, so)
-
 #define SCTP_READ_RANDOM(buf, len)	read_random(buf, len)
 
 #define SCTP_SHA1_CTX		struct sctp_sha1_context

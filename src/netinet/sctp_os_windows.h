@@ -363,12 +363,6 @@ typedef struct route	sctp_route_t;
 typedef struct rtentry	sctp_rtentry_t;
 #define SCTP_RTALLOC(ro, vrf_id) rtalloc((struct route *)ro)
 
-/* Future zero copy wakeup/send  function */
-#define SCTP_ZERO_COPY_EVENT(inp, so)
-/* This is re-pulse ourselves for sendbuf */
-#define SCTP_ZERO_COPY_SENDQ_EVENT(inp, so)
-
-
 VOID AioCsqRemoveIrp(IN PIO_CSQ, IN PIRP);
 PIRP AioCsqPeekNextIrp(IN PIO_CSQ, IN PIRP, IN PVOID);
 
