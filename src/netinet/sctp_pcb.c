@@ -3985,8 +3985,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate, int from)
 			/* Disconnect the socket please */
 			asoc->sctp_socket = NULL;
 			asoc->asoc.state |= SCTP_STATE_CLOSED_SOCKET;
-			if ((asoc->asoc.size_on_reasm_queue > 0) ||
-			    (asoc->asoc.control_pdapi) ||
+			if ((asoc->asoc.control_pdapi) ||
 			    (asoc->asoc.size_on_all_streams > 0) ||
 			    (so && (so->so_rcv.sb_cc > 0))) {
 				/* Left with Data unread */
@@ -7949,16 +7948,6 @@ sctp_drain_mbufs(struct sctp_tcb *stcb)
 					cnt++;
 					SCTP_CALC_TSN_TO_GAP(gap, chk->rec.data.tsn, asoc->mapping_array_base_tsn);
 					KASSERT(chk->send_size > 0, ("chunk has zero length"));
-					if (asoc->size_on_reasm_queue >= chk->send_size) {
-						asoc->size_on_reasm_queue -= chk->send_size;
-					} else {
-#ifdef INVARIANTS
-						panic("size_on_reasm_queue = %u smaller than chunk length %u", asoc->size_on_reasm_queue, chk->send_size);
-#else
-						asoc->size_on_reasm_queue = 0;
-#endif
-					}
-					sctp_ucount_decr(asoc->cnt_on_reasm_queue);
 					SCTP_UNSET_TSN_PRESENT(asoc->mapping_array, gap);
 					TAILQ_REMOVE(&control->reasm, chk, sctp_next);
 					if (chk->data) {
@@ -8009,16 +7998,6 @@ sctp_drain_mbufs(struct sctp_tcb *stcb)
 					cnt++;
 					SCTP_CALC_TSN_TO_GAP(gap, chk->rec.data.tsn, asoc->mapping_array_base_tsn);
 					KASSERT(chk->send_size > 0, ("chunk has zero length"));
-					if (asoc->size_on_reasm_queue >= chk->send_size) {
-						asoc->size_on_reasm_queue -= chk->send_size;
-					} else {
-#ifdef INVARIANTS
-						panic("size_on_reasm_queue = %u smaller than chunk length %u", asoc->size_on_reasm_queue, chk->send_size);
-#else
-						asoc->size_on_reasm_queue = 0;
-#endif
-					}
-					sctp_ucount_decr(asoc->cnt_on_reasm_queue);
 					SCTP_UNSET_TSN_PRESENT(asoc->mapping_array, gap);
 					TAILQ_REMOVE(&control->reasm, chk, sctp_next);
 					if (chk->data) {

@@ -223,15 +223,16 @@ extern struct pr_usrreqs sctp_usrreqs;
 }
 
 #define sctp_sballoc(stcb, sb, m) { \
-	atomic_add_int(&(sb)->sb_cc,SCTP_BUF_LEN((m))); \
-	atomic_add_int(&(sb)->sb_mbcnt, MSIZE); \
-	if (stcb) { \
-		atomic_add_int(&(stcb)->asoc.sb_cc, SCTP_BUF_LEN((m))); \
-		atomic_add_int(&(stcb)->asoc.my_rwnd_control_len, MSIZE); \
-	} \
+	sctp_subtract_frm_stream((stcb), SCTP_BUF_LEN((m)));		\
+	(sb)->sb_cc += SCTP_BUF_LEN((m));				\
+	(sb)->sb_mbcnt += MSIZE;					\
+	if (stcb) { 							\
+		(stcb)->asoc.sb_cc += SCTP_BUF_LEN((m));		\
+		(stcb)->asoc.my_rwnd_control_len += MSIZE;		\
+	} 								\
 	if (SCTP_BUF_TYPE(m) != MT_DATA && SCTP_BUF_TYPE(m) != MT_HEADER && \
 	    SCTP_BUF_TYPE(m) != MT_OOBDATA) \
-		atomic_add_int(&(sb)->sb_ctl,SCTP_BUF_LEN((m))); \
+		(sb)->sb_ctl += SCTP_BUF_LEN((m));	\
 }
 
 #else				/* FreeBSD Version <= 500000 or non-FreeBSD */
@@ -274,11 +275,12 @@ extern struct pr_usrreqs sctp_usrreqs;
 	} \
 }
 
-#define sctp_sballoc(stcb, sb, m) { \
-	atomic_add_int(&(sb)->sb_cc, SCTP_BUF_LEN((m))); \
-	if (stcb) { \
-		atomic_add_int(&(stcb)->asoc.sb_cc, SCTP_BUF_LEN((m))); \
-	} \
+#define sctp_sballoc(stcb, sb, m) {					\
+	(sb)->sb_cc += SCTP_BUF_LEN((m)); 				\
+	sctp_subtract_frm_stream((stcb), SCTP_BUF_LEN((m)));		\
+	if (stcb) { 							\
+		(stcb)->asoc.sb_cc += SCTP_BUF_LEN((m)); 		\
+	} 								\
 }
 
 #else
@@ -292,13 +294,14 @@ extern struct pr_usrreqs sctp_usrreqs;
 	} \
 }
 
-#define sctp_sballoc(stcb, sb, m) { \
-	atomic_add_int(&(sb)->sb_cc, SCTP_BUF_LEN((m))); \
-	atomic_add_int(&(sb)->sb_mbcnt, MSIZE); \
-	if (stcb) { \
-		atomic_add_int(&(stcb)->asoc.sb_cc, SCTP_BUF_LEN((m))); \
-		atomic_add_int(&(stcb)->asoc.my_rwnd_control_len, MSIZE); \
-	} \
+#define sctp_sballoc(stcb, sb, m) { 				\
+	(sb)->sb_cc += SCTP_BUF_LEN((m)); 			\
+	(sb)->sb_mbcnt += MSIZE; 				\
+	sctp_subtract_frm_stream((stcb), SCTP_BUF_LEN((m)));	\
+	if (stcb) { 						\
+		(stcb)->asoc.sb_cc += SCTP_BUF_LEN((m)); 	\
+		(stcb)->asoc.my_rwnd_control_len +=  MSIZE; 	\
+	} 							\
 }
 #endif
 #endif

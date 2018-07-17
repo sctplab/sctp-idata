@@ -12331,8 +12331,7 @@ jump_out:
 	}
 	drp->bottle_bw = htonl(spc);
 	if (asoc->my_rwnd) {
-		drp->current_onq = htonl(asoc->size_on_reasm_queue +
-		    asoc->size_on_all_streams +
+		drp->current_onq = htonl(asoc->size_on_all_streams +
 		    asoc->my_rwnd_control_len +
 		    stcb->sctp_socket->so_rcv.sb_cc);
 	} else {

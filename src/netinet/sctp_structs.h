@@ -1098,8 +1098,6 @@ struct sctp_association {
 	 */
 	unsigned int sent_queue_retran_cnt;
 
-	unsigned int size_on_reasm_queue;
-	unsigned int cnt_on_reasm_queue;
 	unsigned int fwd_tsn_cnt;
 	/* amount of data (bytes) currently in flight (on all destinations) */
 	unsigned int total_flight;

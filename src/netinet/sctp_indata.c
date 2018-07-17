@@ -81,21 +81,19 @@ sctp_set_rwnd(struct sctp_tcb *stcb, struct sctp_association *asoc)
 	asoc->my_rwnd = sctp_calc_rwnd(stcb, asoc);
 }
 
-static void
-sctp_subtract_values(struct sctp_association *asoc,
-		     struct sctp_queued_to_read *control, int line)
+void
+sctp_subtract_frm_stream(struct sctp_tcb *stcb, uint32_t len)
 {
-	if (asoc->size_on_all_streams >= control->length) {
-		asoc->size_on_all_streams -= control->length;
+	if (stcb->asoc.size_on_all_streams >= len) {
+		stcb->asoc.size_on_all_streams -= len;
 	} else {
 #ifdef INVARIANTS
-		panic("size_on_all_streams = %u smaller than control length %u line:%d",
-		      asoc->size_on_all_streams, control->length, line);
+		panic("size_on_all_streams = %u smaller than control length %u",
+		      stcb->asoc.size_on_all_streams, len);
 #else
-		asoc->size_on_all_streams = 0;
+		stcb->asoc.size_on_all_streams = 0;
 #endif
 	}
-	sctp_ucount_decr(asoc->cnt_on_all_streams);
 }
 
 uint32_t
@@ -113,12 +111,9 @@ sctp_calc_rwnd(struct sctp_tcb *stcb, struct sctp_association *asoc)
 		return (calc);
 	}
 
-	KASSERT(asoc->cnt_on_reasm_queue > 0 || asoc->size_on_reasm_queue == 0,
-	        ("size_on_reasm_queue is %u", asoc->size_on_reasm_queue));
 	KASSERT(asoc->cnt_on_all_streams > 0 || asoc->size_on_all_streams == 0,
 	        ("size_on_all_streams is %u", asoc->size_on_all_streams));
 	if (stcb->asoc.sb_cc == 0 &&
-	    asoc->cnt_on_reasm_queue == 0 &&
 	    asoc->cnt_on_all_streams == 0) {
 		/* Full rwnd granted */
 		calc = max(SCTP_SB_LIMIT_RCV(stcb->sctp_socket), SCTP_MINIMAL_RWND);
@@ -130,8 +125,6 @@ sctp_calc_rwnd(struct sctp_tcb *stcb, struct sctp_association *asoc)
 	 * take out what has NOT been put on socket queue and we yet hold
 	 * for putting up.
 	 */
-	calc = sctp_sbspace_sub(calc, (uint32_t)(asoc->size_on_reasm_queue +
-	                                         asoc->cnt_on_reasm_queue * MSIZE));
 	calc = sctp_sbspace_sub(calc, (uint32_t)(asoc->size_on_all_streams +
 	                                         asoc->cnt_on_all_streams * MSIZE));
 	if (calc == 0) {
@@ -598,7 +591,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 		}
 		/* EY it wont be queued if it could be delivered directly */
 		queue_needed = 0;
-		sctp_subtract_values(asoc, control, __LINE__);
+		sctp_ucount_decr(asoc->cnt_on_all_streams);
 		strm->last_mid_delivered++;
 		sctp_mark_non_revokable(asoc, control->sinfo_tsn);
 		sctp_add_to_readq(stcb->sctp_ep, stcb,
@@ -612,7 +605,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 			    (((control->sinfo_flags >> 8) & SCTP_DATA_NOT_FRAG) == SCTP_DATA_NOT_FRAG)) {
 				if (control->on_strm_q == SCTP_ON_ORDERED) {
 					TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
-					sctp_subtract_values(asoc, control, __LINE__);
+					sctp_ucount_decr(asoc->cnt_on_all_streams);
 #ifdef INVARIANTS
 				} else {
 					panic("Huh control: %p is on_strm_q: %d",
@@ -693,7 +686,7 @@ sctp_setup_tail_pointer(struct sctp_queued_to_read *control)
 			continue;
 		}
 		prev = m;
-		atomic_add_int(&control->length, SCTP_BUF_LEN(m));
+		control->length += SCTP_BUF_LEN(m);
 		if (control->on_read_q) {
 			/*
 			 * On read queue so we must increment the
@@ -754,7 +747,7 @@ sctp_add_to_tail_pointer(struct sctp_queued_to_read *control, struct mbuf *m, ui
 			sctp_sballoc(stcb, &stcb->sctp_socket->so_rcv, m);
 		}
 		*added += SCTP_BUF_LEN(m);
-		atomic_add_int(&control->length, SCTP_BUF_LEN(m));
+		control->length += SCTP_BUF_LEN(m);
 		m = SCTP_BUF_NEXT(m);
 	}
 	if (prev) {
@@ -854,16 +847,6 @@ restart:
 					tchk = TAILQ_FIRST(&control->reasm);
 					if (tchk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
 						TAILQ_REMOVE(&control->reasm, tchk, sctp_next);
-						if (asoc->size_on_reasm_queue >= tchk->send_size) {
-							asoc->size_on_reasm_queue -= tchk->send_size;
-						} else {
-#ifdef INVARIANTS
-						panic("size_on_reasm_queue = %u smaller than chunk length %u", asoc->size_on_reasm_queue, tchk->send_size);
-#else
-						asoc->size_on_reasm_queue = 0;
-#endif
-						}
-						sctp_ucount_decr(asoc->cnt_on_reasm_queue);
 						nc->first_frag_seen = 1;
 						nc->fsn_included = tchk->rec.data.fsn;
 						nc->data = tchk->data;
@@ -1013,6 +996,10 @@ sctp_inject_old_unordered_data(struct sctp_tcb *stcb,
 			tmp = control->sinfo_ppid;
 			control->sinfo_ppid = chk->rec.data.ppid;
 			chk->rec.data.ppid = tmp;
+			/* Remove the size of the old control (swapped into the chk) */
+			asoc->size_on_all_streams -= chk->send_size;
+			/* Add the size of the new control we swapped in */
+			asoc->size_on_all_streams += control->length;
 			/* Fix tail pointer */
 			goto place_chunk;
 		}
@@ -1023,6 +1010,7 @@ sctp_inject_old_unordered_data(struct sctp_tcb *stcb,
 		control->sinfo_ppid = chk->rec.data.ppid;
 		control->data = chk->data;
 		sctp_mark_non_revokable(asoc, chk->rec.data.tsn);
+		asoc->size_on_all_streams += chk->send_size;
 		chk->data = NULL;
 		sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
 		sctp_setup_tail_pointer(control);
@@ -1036,8 +1024,7 @@ place_chunk:
 			 * This one in queue is bigger than the new one, insert
 			 * the new one before at.
 			 */
-			asoc->size_on_reasm_queue += chk->send_size;
-			sctp_ucount_incr(asoc->cnt_on_reasm_queue);
+			asoc->size_on_all_streams += chk->send_size;
 			inserted = 1;
 			TAILQ_INSERT_BEFORE(at, chk, sctp_next);
 			break;
@@ -1056,8 +1043,7 @@ place_chunk:
 	}
 	if (inserted == 0) {
 		/* Its at the end */
-		asoc->size_on_reasm_queue += chk->send_size;
-		sctp_ucount_incr(asoc->cnt_on_reasm_queue);
+		asoc->size_on_all_streams += chk->send_size;
 		control->top_fsn = chk->rec.data.fsn;
 		TAILQ_INSERT_TAIL(&control->reasm, chk, sctp_next);
 	}
@@ -1168,7 +1154,7 @@ done_un:
 #endif
 				SCTP_STAT_INCR_COUNTER64(sctps_reasmusrmsgs);
 				TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
-				sctp_subtract_values(asoc, control, __LINE__);
+				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				control->on_strm_q = 0;
 			}
 			if (strm->pd_api_started && control->pdapi_started) {
@@ -1212,7 +1198,7 @@ deliver_more:
 #endif
 					SCTP_STAT_INCR_COUNTER64(sctps_reasmusrmsgs);
 					TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
-					sctp_subtract_values(asoc, control, __LINE__);
+					sctp_ucount_decr(asoc->cnt_on_all_streams);
 					control->on_strm_q = 0;
 				}
 				ret++;
@@ -1230,15 +1216,6 @@ deliver_more:
 			done = (control->end_added) && (control->last_frag_seen);
 			if (control->on_read_q == 0) {
 				if (!done) {
-					if (asoc->size_on_all_streams >= control->length) {
-						asoc->size_on_all_streams -= control->length;
-					} else {
-#ifdef INVARIANTS
-						panic("size_on_all_streams = %u smaller than control length %u", asoc->size_on_all_streams, control->length);
-#else
-						asoc->size_on_all_streams = 0;
-#endif
-					}
 					strm->pd_api_started = 1;
 					control->pdapi_started = 1;
 				}
@@ -1288,8 +1265,6 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 		sctp_add_to_tail_pointer(control, chk->data, &added);
 	}
 	control->fsn_included = chk->rec.data.fsn;
-	asoc->size_on_reasm_queue -= chk->send_size;
-	sctp_ucount_decr(asoc->cnt_on_reasm_queue);
 	sctp_mark_non_revokable(asoc, chk->rec.data.tsn);
 	chk->data = NULL;
 	if (chk->rec.data.rcv_flags & SCTP_DATA_FIRST_FRAG) {
@@ -1308,15 +1283,11 @@ sctp_add_chk_to_control(struct sctp_queued_to_read *control,
 				/* Unordered */
 				TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
 				control->on_strm_q = 0;
-				sctp_subtract_values(asoc, control, __LINE__);
+				sctp_ucount_decr(asoc->cnt_on_all_streams);
 			} else if (control->on_strm_q == SCTP_ON_ORDERED) {
 				/* Ordered */
 				TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
-				/*
-				 * Don't need to decrement size_on_all_streams,
-				 * since control is on the read queue.
-				 */
-				sctp_subtract_values(asoc, control, __LINE__);
+				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				control->on_strm_q = 0;
 #ifdef INVARIANTS
 			} else if (control->on_strm_q) {
@@ -1365,7 +1336,6 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	}
 	/* Must be added to the stream-in queue */
 	if (created_control) {
-		sctp_ucount_incr(asoc->cnt_on_all_streams);
 		if (sctp_place_control_in_stream(strm, asoc, control)) {
 			/* Duplicate SSN? */
 			sctp_abort_in_reasm(stcb, control, chk,
@@ -1374,6 +1344,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			sctp_clean_up_control(stcb, control);
 			return;
 		}
+		sctp_ucount_incr(asoc->cnt_on_all_streams);
 		if ((tsn == (asoc->cumulative_tsn + 1) && (asoc->idata_supported == 0))) {
 			/* Ok we created this control and now
 			 * lets validate that its legal i.e. there
@@ -1421,11 +1392,11 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		control->sinfo_tsn = chk->rec.data.tsn;
 		control->fsn_included = chk->rec.data.fsn;
 		control->data = chk->data;
+		asoc->size_on_all_streams += chk->send_size;
 		sctp_mark_non_revokable(asoc, chk->rec.data.tsn);
 		chk->data = NULL;
 		sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
 		sctp_setup_tail_pointer(control);
-		asoc->size_on_all_streams += control->length;
 	} else {
 		/* Place the chunk in our list */
 		int inserted=0;
@@ -1517,8 +1488,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				SCTPDBG(SCTP_DEBUG_XXX,
 					"Insert it before fsn: %u\n",
 					at->rec.data.fsn);
-				asoc->size_on_reasm_queue += chk->send_size;
-				sctp_ucount_incr(asoc->cnt_on_reasm_queue);
+				asoc->size_on_all_streams += chk->send_size;
 				TAILQ_INSERT_BEFORE(at, chk, sctp_next);
 				inserted = 1;
 				break;
@@ -1544,8 +1514,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			/* Goes on the end */
 			SCTPDBG(SCTP_DEBUG_XXX, "Inserting at tail of list fsn: %u\n",
 				chk->rec.data.fsn);
-			asoc->size_on_reasm_queue += chk->send_size;
-			sctp_ucount_incr(asoc->cnt_on_reasm_queue);
+			asoc->size_on_all_streams += chk->send_size;
 			TAILQ_INSERT_TAIL(&control->reasm, chk, sctp_next);
 		}
 	}
@@ -1570,17 +1539,6 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					next_fsn, control->fsn_included);
 				TAILQ_REMOVE(&control->reasm, at, sctp_next);
 				lenadded = sctp_add_chk_to_control(control, strm, stcb, asoc, at, SCTP_READ_LOCK_NOT_HELD);
-				if (control->on_read_q) {
-					do_wakeup = 1;
-				} else {
-					/*
-					 * We only add to the size-on-all-streams
-					 * if its not on the read q. The read q
-					 * flag will cause a sballoc so its accounted
-					 * for there.
-					 */
-					asoc->size_on_all_streams += lenadded;
-				}
 				next_fsn++;
 				if (control->end_added && control->pdapi_started) {
 					if (strm->pd_api_started) {
@@ -1640,7 +1598,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			  struct sctp_nets *net, uint32_t *high_tsn, int *abort_flag,
 			  int *break_flag, int last_chunk, uint8_t chk_type)
 {
-	struct sctp_tmit_chunk *chk = NULL; /* make gcc happy */
+	struct sctp_tmit_chunk *chk = NULL;	/* make gcc happy */
 	uint32_t tsn, fsn, gap, mid;
 	struct mbuf *dmbuf;
 	int the_len;
@@ -1874,7 +1832,6 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	}
 	/* now do the tests */
 	if (((asoc->cnt_on_all_streams +
-	      asoc->cnt_on_reasm_queue +
 	      asoc->cnt_msg_on_sb) >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue)) ||
 	    (((int)asoc->my_rwnd) <= 0)) {
 		/*
@@ -1911,7 +1868,6 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			dump_packet:
 				sctp_set_rwnd(stcb, asoc);
 				if ((asoc->cnt_on_all_streams +
-				     asoc->cnt_on_reasm_queue +
 				     asoc->cnt_msg_on_sb) >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue)) {
 					SCTP_STAT_INCR(sctps_datadropchklmt);
 				} else {
@@ -2084,7 +2040,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		}
 		SCTPDBG(SCTP_DEBUG_XXX, "Injecting control: %p to be read (MID: %u)\n",
 			control, mid);
-
+		asoc->size_on_all_streams += control->length;
 		sctp_add_to_readq(stcb->sctp_ep, stcb,
 		                  control, &stcb->sctp_socket->so_rcv,
 		                  1, SCTP_READ_LOCK_NOT_HELD, SCTP_SO_NOT_LOCKED);
@@ -5296,7 +5252,7 @@ sctp_kick_prsctp_reorder_queue(struct sctp_tcb *stcb,
 					control->on_strm_q = 0;
 				}
 				/* subtract pending on streams */
-				sctp_subtract_values(asoc, control, __LINE__);
+				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				/* deliver it to at least the delivery-q */
 				if (stcb->sctp_socket) {
 					sctp_mark_non_revokable(asoc, control->sinfo_tsn);
@@ -5355,7 +5311,7 @@ sctp_kick_prsctp_reorder_queue(struct sctp_tcb *stcb,
 					}
 					control->on_strm_q = 0;
 				}
-				sctp_subtract_values(asoc, control, __LINE__);
+				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				/* deliver it to at least the delivery-q */
 				strmin->last_mid_delivered = control->mid;
 				if (stcb->sctp_socket) {
@@ -5423,22 +5379,14 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 		}
 		cnt_removed++;
 		TAILQ_REMOVE(&control->reasm, chk, sctp_next);
-		if (asoc->size_on_reasm_queue >= chk->send_size) {
-			asoc->size_on_reasm_queue -= chk->send_size;
-		} else {
-#ifdef INVARIANTS
-			panic("size_on_reasm_queue = %u smaller than chunk length %u", asoc->size_on_reasm_queue, chk->send_size);
-#else
-			asoc->size_on_reasm_queue = 0;
-#endif
-		}
-		sctp_ucount_decr(asoc->cnt_on_reasm_queue);
+		sctp_subtract_frm_stream(stcb, chk->send_size);
 		if (chk->data) {
 			sctp_m_freem(chk->data);
 			chk->data = NULL;
 		}
 		sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
 	}
+	sctp_subtract_frm_stream(stcb, control->length);
 	if (!TAILQ_EMPTY(&control->reasm)) {
 		/* This has to be old data, unordered */
 		if (control->data) {
@@ -5457,11 +5405,11 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 	}
 	if (control->on_strm_q == SCTP_ON_ORDERED) {
 		TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
-		sctp_subtract_values(asoc, control, __LINE__);
+		sctp_ucount_decr(asoc->cnt_on_all_streams);
 		control->on_strm_q = 0;
 	} else if (control->on_strm_q == SCTP_ON_UNORDERED) {
 		TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
-		sctp_subtract_values(asoc, control, __LINE__);
+		sctp_ucount_decr(asoc->cnt_on_all_streams);
 		control->on_strm_q = 0;
 #ifdef INVARIANTS
 	} else if (control->on_strm_q) {
@@ -5667,10 +5615,10 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 					control->end_added = 1;
 					if (control->on_strm_q == SCTP_ON_ORDERED) {
 						TAILQ_REMOVE(&strm->inqueue, control, next_instrm);
-						sctp_subtract_values(asoc, control, __LINE__);
+						sctp_ucount_decr(asoc->cnt_on_all_streams);
 					} else if (control->on_strm_q == SCTP_ON_UNORDERED) {
 						TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
-						sctp_subtract_values(asoc, control, __LINE__);
+						sctp_ucount_decr(asoc->cnt_on_all_streams);
 #ifdef INVARIANTS
 					} else if (control->on_strm_q) {
 						panic("strm: %p ctl: %p unknown %d",

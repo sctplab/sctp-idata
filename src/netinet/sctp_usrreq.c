@@ -2638,8 +2638,7 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 
 		if (stcb) {
 			ss->ss_total_sndbuf = stcb->asoc.total_output_queue_size;
-			ss->ss_total_recv_buf = (stcb->asoc.size_on_reasm_queue +
-						 stcb->asoc.size_on_all_streams);
+			ss->ss_total_recv_buf = stcb->asoc.size_on_all_streams;
 			SCTP_TCB_UNLOCK(stcb);
 			*optsize = sizeof(struct sctp_sockstat);
 		} else {
@@ -3291,8 +3290,7 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		 * We can't include chunks that have been passed to
 		 * the socket layer. Only things in queue.
 		 */
-		sstat->sstat_penddata = (stcb->asoc.cnt_on_reasm_queue +
-					 stcb->asoc.cnt_on_all_streams);
+		sstat->sstat_penddata =  stcb->asoc.cnt_on_all_streams;
 
 
 		sstat->sstat_instrms = stcb->asoc.streamincnt;
