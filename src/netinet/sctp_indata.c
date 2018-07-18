@@ -5428,6 +5428,8 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 		    strm, control, control->on_strm_q);
 #endif
 	}
+	KASSERT(asoc->cnt_on_all_streams > 0 || asoc->size_on_all_streams == 0,
+	        ("size_on_all_streams is %u", asoc->size_on_all_streams));
 	control->on_strm_q = 0;
 	if (control->on_read_q == 0) {
 		sctp_free_remote_addr(control->whoFrom);
