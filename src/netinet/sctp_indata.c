@@ -84,6 +84,7 @@ sctp_set_rwnd(struct sctp_tcb *stcb, struct sctp_association *asoc)
 void
 sctp_subtract_frm_stream(struct sctp_tcb *stcb, uint32_t len)
 {
+	SCTP_TCB_LOCK_ASSERT(stcb);
 	if (stcb->asoc.size_on_all_streams >= len) {
 		stcb->asoc.size_on_all_streams -= len;
 	} else {
@@ -110,7 +111,7 @@ sctp_calc_rwnd(struct sctp_tcb *stcb, struct sctp_association *asoc)
 	if (stcb->sctp_socket == NULL) {
 		return (calc);
 	}
-
+	SCTP_TCB_LOCK_ASSERT(stcb);
 	KASSERT(asoc->cnt_on_all_streams > 0 || asoc->size_on_all_streams == 0,
 	        ("size_on_all_streams is %u", asoc->size_on_all_streams));
 	if (stcb->asoc.sb_cc == 0 &&
@@ -567,6 +568,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb,
 
 	}
 	queue_needed = 1;
+	SCTP_TCB_LOCK_ASSERT(stcb);
 	asoc->size_on_all_streams += control->length;
 	sctp_ucount_incr(asoc->cnt_on_all_streams);
 	nxt_todel = strm->last_mid_delivered + 1;
@@ -997,6 +999,7 @@ sctp_inject_old_unordered_data(struct sctp_tcb *stcb,
 			control->sinfo_ppid = chk->rec.data.ppid;
 			chk->rec.data.ppid = tmp;
 			/* Remove the size of the old control (swapped into the chk) */
+			SCTP_TCB_LOCK_ASSERT(stcb);
 			asoc->size_on_all_streams -= chk->send_size;
 			/* Add the size of the new control we swapped in */
 			asoc->size_on_all_streams += control->length;
@@ -1010,6 +1013,7 @@ sctp_inject_old_unordered_data(struct sctp_tcb *stcb,
 		control->sinfo_ppid = chk->rec.data.ppid;
 		control->data = chk->data;
 		sctp_mark_non_revokable(asoc, chk->rec.data.tsn);
+		SCTP_TCB_LOCK_ASSERT(stcb);
 		asoc->size_on_all_streams += chk->send_size;
 		chk->data = NULL;
 		sctp_free_a_chunk(stcb, chk, SCTP_SO_NOT_LOCKED);
@@ -1024,6 +1028,7 @@ place_chunk:
 			 * This one in queue is bigger than the new one, insert
 			 * the new one before at.
 			 */
+			SCTP_TCB_LOCK_ASSERT(stcb);
 			asoc->size_on_all_streams += chk->send_size;
 			inserted = 1;
 			TAILQ_INSERT_BEFORE(at, chk, sctp_next);
@@ -1043,6 +1048,7 @@ place_chunk:
 	}
 	if (inserted == 0) {
 		/* Its at the end */
+		SCTP_TCB_LOCK_ASSERT(stcb);
 		asoc->size_on_all_streams += chk->send_size;
 		control->top_fsn = chk->rec.data.fsn;
 		TAILQ_INSERT_TAIL(&control->reasm, chk, sctp_next);
@@ -1392,6 +1398,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		control->sinfo_tsn = chk->rec.data.tsn;
 		control->fsn_included = chk->rec.data.fsn;
 		control->data = chk->data;
+		SCTP_TCB_LOCK_ASSERT(stcb);
 		asoc->size_on_all_streams += chk->send_size;
 		sctp_mark_non_revokable(asoc, chk->rec.data.tsn);
 		chk->data = NULL;
@@ -1488,6 +1495,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				SCTPDBG(SCTP_DEBUG_XXX,
 					"Insert it before fsn: %u\n",
 					at->rec.data.fsn);
+				SCTP_TCB_LOCK_ASSERT(stcb);
 				asoc->size_on_all_streams += chk->send_size;
 				TAILQ_INSERT_BEFORE(at, chk, sctp_next);
 				inserted = 1;
@@ -1514,6 +1522,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			/* Goes on the end */
 			SCTPDBG(SCTP_DEBUG_XXX, "Inserting at tail of list fsn: %u\n",
 				chk->rec.data.fsn);
+			SCTP_TCB_LOCK_ASSERT(stcb);
 			asoc->size_on_all_streams += chk->send_size;
 			TAILQ_INSERT_TAIL(&control->reasm, chk, sctp_next);
 		}
@@ -2040,6 +2049,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		}
 		SCTPDBG(SCTP_DEBUG_XXX, "Injecting control: %p to be read (MID: %u)\n",
 			control, mid);
+		SCTP_TCB_LOCK_ASSERT(stcb);
 		asoc->size_on_all_streams += control->length;
 		sctp_add_to_readq(stcb->sctp_ep, stcb,
 		                  control, &stcb->sctp_socket->so_rcv,
