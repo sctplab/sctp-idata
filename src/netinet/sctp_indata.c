@@ -5402,6 +5402,7 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 		if (control->data) {
 			sctp_m_freem(control->data);
 			control->data = NULL;
+			control->length = 0;
 		}
 		sctp_reset_a_control(control, stcb->sctp_ep, cumtsn);
 		chk = TAILQ_FIRST(&control->reasm);
@@ -5433,6 +5434,7 @@ sctp_flush_reassm_for_str_seq(struct sctp_tcb *stcb,
 		if (control->data) {
 			sctp_m_freem(control->data);
 			control->data = NULL;
+			control->length = 0;
 		}
 		sctp_free_a_readq(stcb, control);
 	}
