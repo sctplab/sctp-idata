@@ -3004,7 +3004,7 @@ sctp_process_segment_range(struct sctp_tcb *stcb, struct sctp_tmit_chunk **p_tp1
 						tp1->whoTo->net_ack += tp1->send_size;
 						if (tp1->snd_count < 2) {
 							/*-
-							 * True non-retransmited chunk
+							 * True non-retransmitted chunk
 							 */
 							tp1->whoTo->net_ack2 += tp1->send_size;
 
@@ -3964,7 +3964,7 @@ sctp_express_handle_sack(struct sctp_tcb *stcb, uint32_t cumack,
 					tp1->whoTo->net_ack += tp1->send_size;
 					if (tp1->snd_count < 2) {
 						/*
-						 * True non-retransmited
+						 * True non-retransmitted
 						 * chunk
 						 */
 						tp1->whoTo->net_ack2 +=
@@ -4602,7 +4602,7 @@ sctp_handle_sack(struct mbuf *m, int offset_seg, int offset_dup,
 
 					if (tp1->snd_count < 2) {
 						/*
-						 * True non-retransmited
+						 * True non-retransmitted
 						 * chunk
 						 */
 						tp1->whoTo->net_ack2 +=
