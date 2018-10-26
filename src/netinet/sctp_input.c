@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_input.c 338134 2018-08-21 13:25:32Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_input.c 339042 2018-10-01 14:05:31Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -57,6 +57,7 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_input.c 338134 2018-08-21 13:25:32Z tu
 #endif
 #endif
 #if defined(__FreeBSD__)
+#include <netinet/in_kdtrace.h>
 #include <sys/smp.h>
 #endif
 
@@ -2674,7 +2675,7 @@ sctp_handle_cookie_echo(struct mbuf *m, int iphlen, int offset,
 		return (NULL);
 	}
 	/* compare the received digest with the computed digest */
-	if (memcmp(calc_sig, sig, SCTP_SIGNATURE_SIZE) != 0) {
+	if (timingsafe_bcmp(calc_sig, sig, SCTP_SIGNATURE_SIZE) != 0) {
 		/* try the old cookie? */
 		if ((cookie->time_entered.tv_sec == (long)ep->time_of_secret_change) &&
 		    (ep->current_secret_number != ep->last_secret_number)) {
@@ -2683,7 +2684,7 @@ sctp_handle_cookie_echo(struct mbuf *m, int iphlen, int offset,
 			    (uint8_t *)ep->secret_key[(int)ep->last_secret_number],
 			    SCTP_SECRET_SIZE, m, cookie_offset, calc_sig, 0);
 			/* compare */
-			if (memcmp(calc_sig, sig, SCTP_SIGNATURE_SIZE) == 0)
+			if (timingsafe_bcmp(calc_sig, sig, SCTP_SIGNATURE_SIZE) == 0)
 				cookie_ok = 1;
 		}
 	} else {
@@ -5768,6 +5769,7 @@ sctp_common_input_processing(struct mbuf **mm, int iphlen, int offset, int lengt
 				net->flowtype = mflowtype;
 				net->flowid = mflowid;
 			}
+			SCTP_PROBE5(receive, NULL, stcb, m, stcb, sh);
 #endif
 			if ((inp != NULL) && (stcb != NULL)) {
 				sctp_send_packet_dropped(stcb, net, m, length, iphlen, 1);
@@ -5811,6 +5813,9 @@ sctp_common_input_processing(struct mbuf **mm, int iphlen, int offset, int lengt
 	}
 #endif
 	if (inp == NULL) {
+#if defined(__FreeBSD__)
+		SCTP_PROBE5(receive, NULL, stcb, m, stcb, sh);
+#endif
 		SCTP_STAT_INCR(sctps_noport);
 #if defined(__FreeBSD__) && (((__FreeBSD_version < 900000) && (__FreeBSD_version >= 804000)) || (__FreeBSD_version > 900000))
 		if (badport_bandlim(BANDLIM_SCTP_OOTB) < 0) {
@@ -5865,6 +5870,9 @@ sctp_common_input_processing(struct mbuf **mm, int iphlen, int offset, int lengt
 			 */
 			SCTP_TCB_UNLOCK(stcb);
 			stcb = NULL;
+#if defined(__FreeBSD__)
+			SCTP_PROBE5(receive, NULL, stcb, m, stcb, sh);
+#endif
 			snprintf(msg, sizeof(msg), "OOTB, %s:%d at %s", __FILE__, __LINE__, __func__);
 			op_err = sctp_generate_cause(SCTP_BASE_SYSCTL(sctp_diag_info_code),
 			                             msg);
@@ -5937,11 +5945,17 @@ sctp_common_input_processing(struct mbuf **mm, int iphlen, int offset, int lengt
 		if ((stcb != NULL) &&
 		    sctp_auth_is_required_chunk(SCTP_DATA, stcb->asoc.local_auth_chunks)) {
 			/* "silently" ignore */
+#if defined(__FreeBSD__)
+			SCTP_PROBE5(receive, NULL, stcb, m, stcb, sh);
+#endif
 			SCTP_STAT_INCR(sctps_recvauthmissing);
 			goto out;
 		}
 		if (stcb == NULL) {
 			/* out of the blue DATA chunk */
+#if defined(__FreeBSD__)
+			SCTP_PROBE5(receive, NULL, NULL, m, NULL, sh);
+#endif
 			snprintf(msg, sizeof(msg), "OOTB, %s:%d at %s", __FILE__, __LINE__, __func__);
 			op_err = sctp_generate_cause(SCTP_BASE_SYSCTL(sctp_diag_info_code),
 			                             msg);
@@ -5954,11 +5968,17 @@ sctp_common_input_processing(struct mbuf **mm, int iphlen, int offset, int lengt
 		}
 		if (stcb->asoc.my_vtag != ntohl(sh->v_tag)) {
 			/* v_tag mismatch! */
+#if defined(__FreeBSD__)
+			SCTP_PROBE5(receive, NULL, stcb, m, stcb, sh);
+#endif
 			SCTP_STAT_INCR(sctps_badvtag);
 			goto out;
 		}
 	}
 
+#if defined(__FreeBSD__)
+	SCTP_PROBE5(receive, NULL, stcb, m, stcb, sh);
+#endif
 	if (stcb == NULL) {
 		/*
 		 * no valid TCB for this packet, or we found it's a bad

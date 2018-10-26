@@ -43,7 +43,7 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_dtrace_define.h 297662 2016-04-07 09:1
 #include <sys/kernel.h>
 #include <sys/sdt.h>
 
-SDT_PROVIDER_DEFINE(sctp);
+SDT_PROVIDER_DECLARE(sctp);
 
 /********************************************************/
 /* Cwnd probe - tracks changes in the congestion window on a netp */
