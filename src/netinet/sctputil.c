@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 338941 2018-09-26 10:24:50Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 343961 2019-02-10 14:02:14Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -4094,7 +4094,7 @@ sctp_report_all_outbound(struct sctp_tcb *stcb, uint16_t error, int holds_lock, 
 		TAILQ_FOREACH_SAFE(sp, &outs->outqueue, next, nsp) {
 			atomic_subtract_int(&asoc->stream_queue_cnt, 1);
 			TAILQ_REMOVE(&outs->outqueue, sp, next);
-			stcb->asoc.ss_functions.sctp_ss_remove_from_stream(stcb, asoc, outs, sp, holds_lock);
+			stcb->asoc.ss_functions.sctp_ss_remove_from_stream(stcb, asoc, outs, sp, 1);
 			sctp_free_spbufspace(stcb, asoc, sp);
 			if (sp->data) {
 				sctp_ulp_notify(SCTP_NOTIFY_SPECIAL_SP_FAIL, stcb,
@@ -5554,7 +5554,7 @@ sctp_user_rcvd(struct sctp_tcb *stcb, uint32_t *freed_so_far, int hold_rlock,
 {
 	/* User pulled some data, do we need a rwnd update? */
 	int r_unlocked = 0;
-	uint32_t dif, rwnd, has_tcblock=0;
+	uint32_t dif, rwnd;
 	struct socket *so = NULL;
 
 	if (stcb == NULL)
@@ -5582,12 +5582,6 @@ sctp_user_rcvd(struct sctp_tcb *stcb, uint32_t *freed_so_far, int hold_rlock,
 	/* Yep, its worth a look and the lock overhead */
 
 	/* Figure out what the rwnd would be */
-	if (hold_rlock) {
-		SCTP_INP_READ_UNLOCK(stcb->sctp_ep);
-		r_unlocked = 1;
-	}
-	SCTP_TCB_LOCK(stcb);
-	has_tcblock = 1;
 	rwnd = sctp_calc_rwnd(stcb, &stcb->asoc);
 	if (rwnd >= stcb->asoc.my_last_reported_rwnd) {
 		dif = rwnd - stcb->asoc.my_last_reported_rwnd;
@@ -5595,6 +5589,10 @@ sctp_user_rcvd(struct sctp_tcb *stcb, uint32_t *freed_so_far, int hold_rlock,
 		dif = 0;
 	}
 	if (dif >= rwnd_req) {
+		if (hold_rlock) {
+			SCTP_INP_READ_UNLOCK(stcb->sctp_ep);
+			r_unlocked = 1;
+		}
 		if (stcb->asoc.state & SCTP_STATE_ABOUT_TO_BE_FREED) {
 			/*
 			 * One last check before we allow the guy possibly
@@ -5603,8 +5601,10 @@ sctp_user_rcvd(struct sctp_tcb *stcb, uint32_t *freed_so_far, int hold_rlock,
 			 */
 			goto out;
 		}
+		SCTP_TCB_LOCK(stcb);
 		if (stcb->asoc.state & SCTP_STATE_ABOUT_TO_BE_FREED) {
 			/* No reports here */
+			SCTP_TCB_UNLOCK(stcb);
 			goto out;
 		}
 		SCTP_STAT_INCR(sctps_wu_sacks_sent);
@@ -5615,14 +5615,12 @@ sctp_user_rcvd(struct sctp_tcb *stcb, uint32_t *freed_so_far, int hold_rlock,
 		/* make sure no timer is running */
 		sctp_timer_stop(SCTP_TIMER_TYPE_RECV, stcb->sctp_ep, stcb, NULL,
 		                SCTP_FROM_SCTPUTIL + SCTP_LOC_6);
+		SCTP_TCB_UNLOCK(stcb);
 	} else {
 		/* Update how much we have pending */
 		stcb->freed_by_sorcv_sincelast = dif;
 	}
  out:
-	if (has_tcblock)
-		SCTP_TCB_UNLOCK(stcb);
-
 	if (so && r_unlocked && hold_rlock) {
 		SCTP_INP_READ_LOCK(stcb->sctp_ep);
 	}
