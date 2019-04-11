@@ -6843,6 +6843,7 @@ sctp_pcb_init()
 #if defined(_SCTP_NEEDS_CALLOUT_) || defined(_USER_SCTP_NEEDS_CALLOUT_)
 	/* allocate the lock for the callout/timer queue */
 	SCTP_TIMERQ_LOCK_INIT();
+	SCTP_TIMERWAIT_LOCK_INIT();
 	TAILQ_INIT(&SCTP_BASE_INFO(callqueue));
 #endif
 #if defined(__Userspace__)
@@ -7037,6 +7038,7 @@ retry:
 	/* free the locks and mutexes */
 #if defined(__APPLE__)
 	SCTP_TIMERQ_LOCK_DESTROY();
+	SCTP_TIMERWAIT_LOCK_DESTROY();
 #endif
 #ifdef SCTP_PACKET_LOGGING
 	SCTP_IP_PKTLOG_DESTROY();
@@ -7063,6 +7065,7 @@ retry:
 #endif
 #if defined(__Userspace__)
 	SCTP_TIMERQ_LOCK_DESTROY();
+	SCTP_TIMERWAIT_LOCK_DESTROY();
 	SCTP_ZONE_DESTROY(zone_mbuf);
 	SCTP_ZONE_DESTROY(zone_clust);
 	SCTP_ZONE_DESTROY(zone_ext_refcnt);

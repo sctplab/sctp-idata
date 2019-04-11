@@ -76,11 +76,12 @@ void WakeAllXPConditionVariable(userland_cond_t *);
 typedef CONDITION_VARIABLE userland_cond_t;
 #endif
 typedef HANDLE userland_thread_t;
+typedef DWORD userland_thread_id_t;
 #define ADDRESS_FAMILY	unsigned __int8
 #define IPVERSION  4
 #define MAXTTL     255
 /* VS2010 comes with stdint.h */
-#if _MSC_VER >= 1600
+#if !defined(_MSC_VER) || (_MSC_VER >= 1600)
 #include <stdint.h>
 #else
 #define uint64_t   unsigned __int64
@@ -220,7 +221,7 @@ typedef char* caddr_t;
 
 #define bzero(buf, len) memset(buf, 0, len)
 #define bcopy(srcKey, dstKey, len) memcpy(dstKey, srcKey, len)
-#if _MSC_VER < 1900
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
 #define snprintf(data, size, format, ...) _snprintf_s(data, size, _TRUNCATE, format, __VA_ARGS__)
 #endif
 #define inline __inline
@@ -282,6 +283,7 @@ typedef char* caddr_t;
 typedef pthread_mutex_t userland_mutex_t;
 typedef pthread_cond_t userland_cond_t;
 typedef pthread_t userland_thread_t;
+typedef pthread_t userland_thread_id_t;
 #endif
 
 #if defined(__Userspace_os_Windows) || defined(__Userspace_os_NaCl)
@@ -1039,6 +1041,9 @@ sctp_userspace_thread_create(userland_thread_t *thread, start_routine_t start_ro
 void
 sctp_userspace_set_threadname(const char *name);
 
+int sctp_userspace_thread_id(userland_thread_id_t *thread);
+int sctp_userspace_thread_equal(userland_thread_id_t t1, userland_thread_id_t t2);
+
 /*
  * SCTP protocol specific mbuf flags.
  */
@@ -1158,5 +1163,10 @@ sctp_get_mbuf_for_msg(unsigned int space_needed, int want_header, int how, int a
 #endif
 
 #define SCTP_IS_LISTENING(inp) ((inp->sctp_flags & SCTP_PCB_FLAGS_ACCEPTING) != 0)
+
+#if defined(__Userspace_os_DragonFly) || defined(__Userspace_os_Linux) || defined(__Userspace_os_NaCl) || defined(__Userspace_os_NetBSD) || defined(__Userspace_os_Windows)
+int
+timingsafe_bcmp(const void *, const void *, size_t );
+#endif
 
 #endif
