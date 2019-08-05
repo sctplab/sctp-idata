@@ -337,7 +337,7 @@ sctp_get_tick_count(void)
 
 
 /* is the endpoint v6only? */
-#define SCTP_IPV6_V6ONLY(in6p)	(((struct in6pcb *)in6p)->in6p_flags & IN6P_IPV6_V6ONLY)
+#define SCTP_IPV6_V6ONLY(sctp_inpcb)	((sctp_inpcb)->ip_inp.inp.inp_flags & IN6P_IPV6_V6ONLY)
 /* is the socket non-blocking? */
 #define SCTP_SO_IS_NBIO(so)	((so)->so_state & SS_NBIO)
 #define SCTP_SET_SO_NBIO(so)	((so)->so_state |= SS_NBIO)

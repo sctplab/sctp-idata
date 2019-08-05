@@ -100,13 +100,6 @@
 #include <sys/filedesc.h>
 #endif
 
-
-#if defined(HAVE_NRL_INPCB)
-#ifndef in6pcb
-#define in6pcb		inpcb
-#endif
-#endif
-
 #define SCTP_BASE_INFO(type) system_base_info.sctppcbinfo.type
 #define SCTP_BASE_STATS system_base_info.sctpstat
 #define SCTP_BASE_STAT(elem)     system_base_info.sctpstat.elm
@@ -178,7 +171,7 @@ typedef struct callout sctp_os_timer_t;
 
 
 /* is the endpoint v6only? */
-#define SCTP_IPV6_V6ONLY(inp) (((struct in6pcb *)inp)->in6p_flags & IN6P_IPV6_V6ONLY)
+#define SCTP_IPV6_V6ONLY(sctp_inpcb)	((sctp_inpcb)->ip_inp.inp.inp_flags & IN6P_IPV6_V6ONLY)
 
 /*
  * routes, output, etc.
