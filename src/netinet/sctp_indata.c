@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_indata.c 350216 2019-07-22 18:11:35Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_indata.c 351638 2019-08-31 08:18:49Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -1436,6 +1436,16 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					"The last fsn is now in place fsn: %u\n",
 					chk->rec.data.fsn);
 				control->last_frag_seen = 1;
+				if (SCTP_TSN_GT(control->top_fsn, chk->rec.data.fsn)) {
+					SCTPDBG(SCTP_DEBUG_XXX,
+						"New fsn: %u is not at top_fsn: %u -- abort\n",
+						chk->rec.data.fsn,
+						control->top_fsn);
+					sctp_abort_in_reasm(stcb, control, chk,
+							    abort_flag,
+							    SCTP_FROM_SCTP_INDATA + SCTP_LOC_9);
+					return;
+				}
 			}
 			if (asoc->idata_supported || control->first_frag_seen) {
 				/* 
@@ -1448,7 +1458,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					/* We have already delivered up to this so its a dup */
 					sctp_abort_in_reasm(stcb, control, chk,
 							    abort_flag,
-							    SCTP_FROM_SCTP_INDATA + SCTP_LOC_9);
+							    SCTP_FROM_SCTP_INDATA + SCTP_LOC_10);
 					return;
 				}
 			}
@@ -1460,7 +1470,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					chk->rec.data.fsn, control->top_fsn);
 				sctp_abort_in_reasm(stcb, control,
 						    chk, abort_flag,
-						    SCTP_FROM_SCTP_INDATA + SCTP_LOC_10);
+						    SCTP_FROM_SCTP_INDATA + SCTP_LOC_11);
 				return;
 			}
 			if (asoc->idata_supported || control->first_frag_seen) {
@@ -1478,7 +1488,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 						chk->rec.data.fsn, control->fsn_included);
 					sctp_abort_in_reasm(stcb, control, chk,
 							    abort_flag,
-							    SCTP_FROM_SCTP_INDATA + SCTP_LOC_11);
+							    SCTP_FROM_SCTP_INDATA + SCTP_LOC_12);
 					return;
 				}
 			}
@@ -1490,7 +1500,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					control->top_fsn);
 				sctp_abort_in_reasm(stcb, control, chk,
 						    abort_flag,
-						    SCTP_FROM_SCTP_INDATA + SCTP_LOC_12);
+						    SCTP_FROM_SCTP_INDATA + SCTP_LOC_13);
 				return;
 			}
 		}
@@ -1530,7 +1540,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					at->rec.data.fsn);
 				sctp_abort_in_reasm(stcb, control,
 						    chk, abort_flag,
-						    SCTP_FROM_SCTP_INDATA + SCTP_LOC_13);
+						    SCTP_FROM_SCTP_INDATA + SCTP_LOC_14);
 				return;
 			}
 		}
