@@ -32,14 +32,9 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_dtrace_define.h 297662 2016-04-07 09:10:34Z rrs $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_kdtrace.c 353477 2019-10-13 16:14:04Z markj $");
 
-#ifndef _NETINET_SCTP_DTRACE_DEFINE_H_
-#define _NETINET_SCTP_DTRACE_DEFINE_H_
-
-#if defined(__FreeBSD__) && __FreeBSD_version < 1100000
-#include "opt_kdtrace.h"
-#endif
+#include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/sdt.h>
 
@@ -176,5 +171,3 @@ SDT_PROBE_DEFINE4(sctp, flightsize, assoc, val,
 			 */
     "int",		/* The up/down amount */
     "int");		/* The new value of the cwnd */
-
-#endif
