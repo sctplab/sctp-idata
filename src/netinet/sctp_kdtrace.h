@@ -33,11 +33,11 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_kdtrace.h 353488 2019-10-14 13:02:49Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_kdtrace.h 353518 2019-10-14 20:32:11Z tuexen $");
 #endif
 
-#ifndef _NETINET_SCTP_DTRACE_DECLARE_H_
-#define _NETINET_SCTP_DTRACE_DECLARE_H_
+#ifndef _NETINET_SCTP_KDTRACE_H_
+#define _NETINET_SCTP_KDTRACE_H_
 
 #if defined(__FreeBSD__) && __FreeBSD_version >= 803000
 #if defined(__FreeBSD__) && __FreeBSD_version < 1100000
@@ -47,6 +47,19 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_kdtrace.h 353488 2019-10-14 13:02:49Z 
 #endif
 #include <sys/kernel.h>
 #include <sys/sdt.h>
+
+#define	SCTP_PROBE1(probe, arg0)					\
+	SDT_PROBE1(sctp, , , probe, arg0)
+#define	SCTP_PROBE2(probe, arg0, arg1)					\
+	SDT_PROBE2(sctp, , , probe, arg0, arg1)
+#define	SCTP_PROBE3(probe, arg0, arg1, arg2)				\
+	SDT_PROBE3(sctp, , , probe, arg0, arg1, arg2)
+#define	SCTP_PROBE4(probe, arg0, arg1, arg2, arg3)			\
+	SDT_PROBE4(sctp, , , probe, arg0, arg1, arg2, arg3)
+#define	SCTP_PROBE5(probe, arg0, arg1, arg2, arg3, arg4)		\
+	SDT_PROBE5(sctp, , , probe, arg0, arg1, arg2, arg3, arg4)
+#define	SCTP_PROBE6(probe, arg0, arg1, arg2, arg3, arg4, arg5)		\
+	SDT_PROBE6(sctp, , , probe, arg0, arg1, arg2, arg3, arg4, arg5)
 
 /* Declare the SCTP provider */
 SDT_PROVIDER_DECLARE(sctp);
@@ -71,25 +84,21 @@ SDT_PROBE_DECLARE(sctp, cwnd, net, pd);
 /* Rttvar probe declaration */
 SDT_PROBE_DECLARE(sctp, cwnd, net, rttvar);
 SDT_PROBE_DECLARE(sctp, cwnd, net, rttstep);
-
 /* One to track an associations rwnd */
 SDT_PROBE_DECLARE(sctp, rwnd, assoc, val);
-
 /* One to track a net's flight size */
 SDT_PROBE_DECLARE(sctp, flightsize, net, val);
-
 /* One to track an associations flight size */
 SDT_PROBE_DECLARE(sctp, flightsize, assoc, val);
-
-
-
-
-
-
+/* Standard Solaris compatible probes */
+SDT_PROBE_DECLARE(sctp, , , receive);
+SDT_PROBE_DECLARE(sctp, , , send);
+SDT_PROBE_DECLARE(sctp, , , state__change);
 #else
 /* All other platforms not defining dtrace probes */
 #ifndef SDT_PROBE
 #define SDT_PROBE(a, b, c, d, e, f, g, h, i)
 #endif
 #endif
+
 #endif

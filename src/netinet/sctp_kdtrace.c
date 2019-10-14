@@ -32,13 +32,13 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_kdtrace.c 353477 2019-10-13 16:14:04Z markj $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_kdtrace.c 353518 2019-10-14 20:32:11Z tuexen $");
 
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/sdt.h>
 
-SDT_PROVIDER_DECLARE(sctp);
+SDT_PROVIDER_DEFINE(sctp);
 
 /********************************************************/
 /* Cwnd probe - tracks changes in the congestion window on a netp */
@@ -171,3 +171,29 @@ SDT_PROBE_DEFINE4(sctp, flightsize, assoc, val,
 			 */
     "int",		/* The up/down amount */
     "int");		/* The new value of the cwnd */
+
+/*
+ * Standard Solaris-compatible probes.
+ */
+
+SDT_PROBE_DEFINE5_XLATE(sctp, , , receive,
+    "void *", "pktinfo_t *",
+    "struct sctp_tcb *", "csinfo_t *",
+    "struct mbuf *", "ipinfo_t *",
+    "struct sctp_tcb *", "sctpsinfo_t *" ,
+    "struct sctphdr *", "sctpinfo_t *");
+
+SDT_PROBE_DEFINE5_XLATE(sctp, , , send,
+    "void *", "pktinfo_t *",
+    "struct sctp_tcb *", "csinfo_t *",
+    "uint8_t *", "ipinfo_t *",
+    "struct sctp_tcb *", "sctpsinfo_t *" ,
+    "struct sctphdr *", "sctpinfo_t *");
+
+SDT_PROBE_DEFINE6_XLATE(sctp, , , state__change,
+    "void *", "void *",
+    "struct sctp_tcb *", "csinfo_t *",
+    "void *", "void *",
+    "struct sctp_tcb *", "sctpsinfo_t *",
+    "void *", "void *",
+    "int", "sctplsinfo_t *");
