@@ -9,13 +9,13 @@ netinet/sctp_constants.h
 netinet/sctp_cc_functions.c
 netinet/sctp_crc32.c
 netinet/sctp_crc32.h
-netinet/sctp_dtrace_declare.h
 netinet/sctp_header.h
 netinet/sctp_indata.c
 netinet/sctp_indata.h
 netinet/sctp_input.c
 netinet/sctp_input.h
 netinet/sctp_kdtrace.c
+netinet/sctp_kdtrace.h
 netinet/sctp_lock_bsd.h
 netinet/sctp_output.c
 netinet/sctp_output.h
