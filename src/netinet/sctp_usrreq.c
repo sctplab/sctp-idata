@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 353480 2019-10-13 18:17:08Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 355172 2019-11-28 12:50:25Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -180,8 +180,8 @@ sctp_init(void)
 	timeout(sctp_delayed_startup, NULL, 1);
 #endif
 #if defined(__FreeBSD__)
-	EVENTHANDLER_REGISTER(rt_addrmsg, sctp_addr_change_event_handler,
-	    NULL, EVENTHANDLER_PRI_FIRST);
+	SCTP_BASE_VAR(eh_tag) = EVENTHANDLER_REGISTER(rt_addrmsg,
+	    sctp_addr_change_event_handler, NULL, EVENTHANDLER_PRI_FIRST);
 #endif
 }
 
@@ -2299,7 +2299,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				if (inp->idata_supported) {
 					av->assoc_value = 1;
@@ -2329,7 +2330,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->sctp_cmt_on_off;
 				SCTP_INP_RUNLOCK(inp);
@@ -2355,7 +2357,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->sctp_ep.sctp_default_cc_module;
 				SCTP_INP_RUNLOCK(inp);
@@ -2400,7 +2403,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->sctp_ep.sctp_default_ss_module;
 				SCTP_INP_RUNLOCK(inp);
@@ -2541,7 +2545,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->sctp_context;
 				SCTP_INP_RUNLOCK(inp);
@@ -2632,7 +2637,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (sack->sack_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (sack->sack_assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				sack->sack_delay = TICKS_TO_MSEC(inp->sctp_ep.sctp_timeoutticks[SCTP_TIMER_RECV]);
 				sack->sack_freq = inp->sctp_ep.sctp_sack_freq;
@@ -2692,7 +2698,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->sctp_ep.max_burst;
 				SCTP_INP_RUNLOCK(inp);
@@ -2721,7 +2728,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				if (inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) {
 					ovh = SCTP_MED_OVERHEAD;
@@ -3147,7 +3155,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (paddrp->spp_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (paddrp->spp_assoc_id == SCTP_FUTURE_ASSOC))) {
 				/* Use endpoint defaults */
 				SCTP_INP_RLOCK(inp);
 				paddrp->spp_pathmaxrxt = inp->sctp_ep.def_net_failure;
@@ -3392,7 +3401,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (srto->srto_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (srto->srto_assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				srto->srto_initial = inp->sctp_ep.initial_rto;
 				srto->srto_max = inp->sctp_ep.sctp_maxrto;
@@ -3448,7 +3458,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (sasoc->sasoc_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (sasoc->sasoc_assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				sasoc->sasoc_cookie_life = TICKS_TO_MSEC(inp->sctp_ep.def_cookie_life);
 				sasoc->sasoc_asocmaxrxt = inp->sctp_ep.max_send_times;
@@ -3479,7 +3490,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (s_info->sinfo_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (s_info->sinfo_assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				memcpy(s_info, &inp->def_send, sizeof(inp->def_send));
 				SCTP_INP_RUNLOCK(inp);
@@ -3604,7 +3616,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (scact->scact_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (scact->scact_assoc_id == SCTP_FUTURE_ASSOC))) {
 				/* get the endpoint active key */
 				SCTP_INP_RLOCK(inp);
 				scact->scact_keynumber = inp->sctp_ep.default_keyid;
@@ -3646,7 +3659,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (sac->gauth_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (sac->gauth_assoc_id == SCTP_FUTURE_ASSOC))) {
 				/* get off the endpoint */
 				SCTP_INP_RLOCK(inp);
 				chklist = inp->sctp_ep.local_auth_chunks;
@@ -3778,7 +3792,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 			} else {
 				if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 				    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-				    (event->se_assoc_id == SCTP_FUTURE_ASSOC)) {
+				    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+				     (event->se_assoc_id == SCTP_FUTURE_ASSOC))) {
 					SCTP_INP_RLOCK(inp);
 					event->se_on = sctp_is_feature_on(inp, event_type);
 					SCTP_INP_RUNLOCK(inp);
@@ -3851,7 +3866,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (info->snd_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (info->snd_assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				info->snd_sid = inp->def_send.sinfo_stream;
 				info->snd_flags = inp->def_send.sinfo_flags;
@@ -3883,7 +3899,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (info->pr_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (info->pr_assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				info->pr_policy = PR_SCTP_POLICY(inp->def_send.sinfo_flags);
 				info->pr_value = inp->def_send.sinfo_timetolive;
@@ -4004,7 +4021,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (thlds->spt_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (thlds->spt_assoc_id == SCTP_FUTURE_ASSOC))) {
 				/* Use endpoint defaults */
 				SCTP_INP_RLOCK(inp);
 				thlds->spt_pathmaxrxt = inp->sctp_ep.def_net_failure;
@@ -4122,7 +4140,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (encaps->sue_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (encaps->sue_assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				encaps->sue_port = inp->sctp_ep.port;
 				SCTP_INP_RUNLOCK(inp);
@@ -4149,7 +4168,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->ecn_supported;
 				SCTP_INP_RUNLOCK(inp);
@@ -4176,7 +4196,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->prsctp_supported;
 				SCTP_INP_RUNLOCK(inp);
@@ -4203,7 +4224,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->auth_supported;
 				SCTP_INP_RUNLOCK(inp);
@@ -4230,7 +4252,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->asconf_supported;
 				SCTP_INP_RUNLOCK(inp);
@@ -4257,7 +4280,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->reconfig_supported;
 				SCTP_INP_RUNLOCK(inp);
@@ -4284,7 +4308,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->nrsack_supported;
 				SCTP_INP_RUNLOCK(inp);
@@ -4311,7 +4336,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->pktdrop_supported;
 				SCTP_INP_RUNLOCK(inp);
@@ -4338,7 +4364,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = (uint32_t)inp->local_strreset_support;
 				SCTP_INP_RUNLOCK(inp);
@@ -4440,7 +4467,8 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				av->assoc_value = inp->max_cwnd;
 				SCTP_INP_RUNLOCK(inp);
@@ -4633,7 +4661,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				if (av->assoc_value == 0) {
 					inp->idata_supported = 0;
@@ -4672,14 +4701,16 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 			} else {
 				if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 				    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-				    (av->assoc_id == SCTP_FUTURE_ASSOC) ||
-				    (av->assoc_id == SCTP_ALL_ASSOC)) {
+				    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+				     ((av->assoc_id == SCTP_FUTURE_ASSOC) ||
+				      (av->assoc_id == SCTP_ALL_ASSOC)))) {
 					SCTP_INP_WLOCK(inp);
 					inp->sctp_cmt_on_off = av->assoc_value;
 					SCTP_INP_WUNLOCK(inp);
 				}
-				if ((av->assoc_id == SCTP_CURRENT_ASSOC) ||
-				    (av->assoc_id == SCTP_ALL_ASSOC)) {
+				if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+				    ((av->assoc_id == SCTP_CURRENT_ASSOC) ||
+				     (av->assoc_id == SCTP_ALL_ASSOC))) {
 					SCTP_INP_RLOCK(inp);
 					LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 						SCTP_TCB_LOCK(stcb);
@@ -4721,14 +4752,16 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (av->assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((av->assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (av->assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				inp->sctp_ep.sctp_default_cc_module = av->assoc_value;
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((av->assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (av->assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((av->assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (av->assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -4753,7 +4786,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		SCTP_CHECK_AND_CAST(cc_opt, optval, struct sctp_cc_option, optsize);
 		SCTP_FIND_STCB(inp, stcb, cc_opt->aid_value.assoc_id);
 		if (stcb == NULL) {
-			if (cc_opt->aid_value.assoc_id == SCTP_CURRENT_ASSOC) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    (cc_opt->aid_value.assoc_id == SCTP_CURRENT_ASSOC)) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -4804,14 +4838,16 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (av->assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((av->assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (av->assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				inp->sctp_ep.sctp_default_ss_module = av->assoc_value;
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((av->assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (av->assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((av->assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (av->assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -4843,7 +4879,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 			}
 			SCTP_TCB_UNLOCK(stcb);
 		} else {
-			if (av->assoc_id == SCTP_CURRENT_ASSOC) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    (av->assoc_id == SCTP_CURRENT_ASSOC)) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -4881,14 +4918,16 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (av->assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((av->assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (av->assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				inp->sctp_context = av->assoc_value;
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((av->assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (av->assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((av->assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (av->assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -5062,8 +5101,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (sack->sack_assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (sack->sack_assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((sack->sack_assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (sack->sack_assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				if (sack->sack_delay) {
 					inp->sctp_ep.sctp_timeoutticks[SCTP_TIMER_RECV] = MSEC_TO_TICKS(sack->sack_delay);
@@ -5073,8 +5113,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 				}
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((sack->sack_assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (sack->sack_assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((sack->sack_assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (sack->sack_assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -5161,8 +5202,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (sca->sca_assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (sca->sca_assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((sca->sca_assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (sca->sca_assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				shared_keys = &inp->sctp_ep.shared_keys;
 				/*
@@ -5196,8 +5238,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 				error = sctp_insert_sharedkey(shared_keys, shared_key);
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((sca->sca_assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (sca->sca_assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((sca->sca_assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (sca->sca_assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -5305,8 +5348,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (scact->scact_assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (scact->scact_assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((scact->scact_assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (scact->scact_assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				if (sctp_auth_setactivekey_ep(inp, scact->scact_keynumber)) {
 					SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, EINVAL);
@@ -5314,8 +5358,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 				}
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((scact->scact_assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (scact->scact_assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((scact->scact_assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (scact->scact_assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -5344,8 +5389,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (scdel->scact_assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (scdel->scact_assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((scdel->scact_assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (scdel->scact_assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				if (sctp_delete_sharedkey_ep(inp, scdel->scact_keynumber)) {
 					SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, EINVAL);
@@ -5353,8 +5399,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 				}
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((scdel->scact_assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (scdel->scact_assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((scdel->scact_assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (scdel->scact_assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -5383,8 +5430,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (keyid->scact_assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (keyid->scact_assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((keyid->scact_assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (keyid->scact_assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				if (sctp_deact_sharedkey_ep(inp, keyid->scact_keynumber)) {
 					SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, EINVAL);
@@ -5392,8 +5440,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 				}
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((keyid->scact_assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (keyid->scact_assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((keyid->scact_assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (keyid->scact_assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -5422,14 +5471,16 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (av->assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((av->assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (av->assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				inp->local_strreset_support = (uint8_t)av->assoc_value;
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((av->assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (av->assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((av->assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (av->assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -5775,14 +5826,16 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (av->assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((av->assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (av->assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				inp->sctp_ep.max_burst = av->assoc_value;
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((av->assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (av->assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((av->assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (av->assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -5818,7 +5871,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				/* FIXME MT: I think this is not in tune with the API ID */
 				if (av->assoc_value) {
@@ -6023,14 +6077,16 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (s_info->sinfo_assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (s_info->sinfo_assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((s_info->sinfo_assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (s_info->sinfo_assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				memcpy(&inp->def_send, s_info, min(optsize, sizeof(inp->def_send)));
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((s_info->sinfo_assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (s_info->sinfo_assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((s_info->sinfo_assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (s_info->sinfo_assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -6397,7 +6453,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 			/************************NO TCB, SET TO default stuff ******************/
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (paddrp->spp_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (paddrp->spp_assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				/*
 				 * For the TOS/FLOWLABEL stuff you set it
@@ -6487,7 +6544,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (srto->srto_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (srto->srto_assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				if (srto->srto_initial)
 					new_init = srto->srto_initial;
@@ -6541,7 +6599,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (sasoc->sasoc_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (sasoc->sasoc_assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				if (sasoc->sasoc_asocmaxrxt)
 					inp->sctp_ep.max_send_times = sasoc->sasoc_asocmaxrxt;
@@ -7008,8 +7067,7 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 				 * so return an error for sender dry events
 				 */
 				if ((event_type == SCTP_PCB_FLAGS_DRYEVNT) &&
-				    ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) == 0) &&
-				    ((inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0) &&
+				    (inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
 				    ((event->se_assoc_id == SCTP_ALL_ASSOC) ||
 				     (event->se_assoc_id == SCTP_CURRENT_ASSOC))) {
 					SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, ENOTSUP);
@@ -7018,8 +7076,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 				}
 				if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 				    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-				    (event->se_assoc_id == SCTP_FUTURE_ASSOC) ||
-				    (event->se_assoc_id == SCTP_ALL_ASSOC)) {
+				    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+				     ((event->se_assoc_id == SCTP_FUTURE_ASSOC) ||
+				      (event->se_assoc_id == SCTP_ALL_ASSOC)))) {
 					SCTP_INP_WLOCK(inp);
 					if (event->se_on) {
 						sctp_feature_on(inp, event_type);
@@ -7028,8 +7087,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 					}
 					SCTP_INP_WUNLOCK(inp);
 				}
-				if ((event->se_assoc_id == SCTP_CURRENT_ASSOC) ||
-				    (event->se_assoc_id == SCTP_ALL_ASSOC)) {
+				if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+				    ((event->se_assoc_id == SCTP_CURRENT_ASSOC) ||
+				     (event->se_assoc_id == SCTP_ALL_ASSOC))) {
 					SCTP_INP_RLOCK(inp);
 					LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 						SCTP_TCB_LOCK(stcb);
@@ -7102,8 +7162,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (info->snd_assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (info->snd_assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((info->snd_assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (info->snd_assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				inp->def_send.sinfo_stream = info->snd_sid;
 				policy = PR_SCTP_POLICY(inp->def_send.sinfo_flags);
@@ -7113,8 +7174,9 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 				inp->def_send.sinfo_context = info->snd_context;
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((info->snd_assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (info->snd_assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((info->snd_assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (info->snd_assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -7156,16 +7218,18 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (info->pr_assoc_id == SCTP_FUTURE_ASSOC) ||
-			    (info->pr_assoc_id == SCTP_ALL_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     ((info->pr_assoc_id == SCTP_FUTURE_ASSOC) ||
+			      (info->pr_assoc_id == SCTP_ALL_ASSOC)))) {
 				SCTP_INP_WLOCK(inp);
 				inp->def_send.sinfo_flags &= 0xfff0;
 				inp->def_send.sinfo_flags |= info->pr_policy;
 				inp->def_send.sinfo_timetolive = info->pr_value;
 				SCTP_INP_WUNLOCK(inp);
 			}
-			if ((info->pr_assoc_id == SCTP_CURRENT_ASSOC) ||
-			    (info->pr_assoc_id == SCTP_ALL_ASSOC)) {
+			if ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			    ((info->pr_assoc_id == SCTP_CURRENT_ASSOC) ||
+			     (info->pr_assoc_id == SCTP_ALL_ASSOC))) {
 				SCTP_INP_RLOCK(inp);
 				LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 					SCTP_TCB_LOCK(stcb);
@@ -7349,7 +7413,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (thlds->spt_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (thlds->spt_assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				inp->sctp_ep.def_net_failure = thlds->spt_pathmaxrxt;
 				inp->sctp_ep.def_net_pf_threshold = thlds->spt_pathpfthld;
@@ -7462,7 +7527,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (encaps->sue_assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (encaps->sue_assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				inp->sctp_ep.port = encaps->sue_port;
 				SCTP_INP_WUNLOCK(inp);
@@ -7487,7 +7553,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				if (av->assoc_value == 0) {
 					inp->ecn_supported = 0;
@@ -7516,7 +7583,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				if (av->assoc_value == 0) {
 					inp->prsctp_supported = 0;
@@ -7545,7 +7613,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				if ((av->assoc_value == 0) &&
 				    (inp->asconf_supported == 1)) {
 				    	/* AUTH is required for ASCONF */
@@ -7581,7 +7650,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				if ((av->assoc_value != 0) &&
 				    (inp->auth_supported == 0)) {
 				    	/* AUTH is required for ASCONF */
@@ -7625,7 +7695,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				if (av->assoc_value == 0) {
 					inp->reconfig_supported = 0;
@@ -7654,7 +7725,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				if (av->assoc_value == 0) {
 					inp->nrsack_supported = 0;
@@ -7683,7 +7755,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				if (av->assoc_value == 0) {
 					inp->pktdrop_supported = 0;
@@ -7723,7 +7796,8 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 		} else {
 			if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) ||
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) ||
-			    (av->assoc_id == SCTP_FUTURE_ASSOC)) {
+			    ((inp->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
+			     (av->assoc_id == SCTP_FUTURE_ASSOC))) {
 				SCTP_INP_WLOCK(inp);
 				inp->max_cwnd = av->assoc_value;
 				SCTP_INP_WUNLOCK(inp);
