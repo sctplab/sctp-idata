@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp.h 345461 2019-03-23 22:56:03Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp.h 356271 2020-01-02 14:04:16Z tuexen $");
 #endif
 
 #ifndef _NETINET_SCTP_H_
@@ -609,7 +609,10 @@ struct sctp_error_auth_invalid_hmac {
 #define SCTP_MOBILITY_PRIM_DELETED       0x00000004
 
 
-#define SCTP_SMALLEST_PMTU 512	 /* smallest pmtu allowed when disabling PMTU discovery */
+/* Smallest PMTU allowed when disabling PMTU discovery */
+#define SCTP_SMALLEST_PMTU 512
+/* Largest PMTU allowed when disabling PMTU discovery */
+#define SCTP_LARGEST_PMTU  65536
 
 #if defined(__Userspace_os_Windows)
 #pragma pack(pop)
