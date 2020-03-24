@@ -81,9 +81,11 @@ __FBSDID("$FreeBSD$");
 #define SCTP_INP_RLOCK(_inp)
 #define SCTP_INP_RUNLOCK(_inp)
 #define SCTP_INP_WLOCK(_inp)
+#define SCTP_INP_WUNLOCK(_inp)
+#define SCTP_INP_RLOCK_ASSERT(_inp)
+#define SCTP_INP_WLOCK_ASSERT(_inp)
 #define SCTP_INP_INCR_REF(_inp)
 #define SCTP_INP_DECR_REF(_inp)
-#define SCTP_INP_WUNLOCK(_inp)
 
 #define SCTP_ASOC_CREATE_LOCK_INIT(_inp)
 #define SCTP_ASOC_CREATE_LOCK_DESTROY(_inp)
