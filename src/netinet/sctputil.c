@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 359405 2020-03-28 20:25:45Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 359657 2020-04-06 13:58:13Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -1803,9 +1803,14 @@ sctp_timeout_handler(void *t)
 #endif
 
 	/* sanity checks... */
-	KASSERT(tmr->self == tmr, ("tmr->self corrupted"));
-	KASSERT(SCTP_IS_TIMER_TYPE_VALID(tmr->type), ("Invalid timer type %d", tmr->type));
+	KASSERT(tmr->self == tmr,
+	        ("sctp_timeout_handler: tmr->self corrupted"));
+	KASSERT(SCTP_IS_TIMER_TYPE_VALID(tmr->type),
+	        ("sctp_timeout_handler: invalid timer type %d", tmr->type));
 	type = tmr->type;
+	KASSERT(stcb == NULL || stcb->sctp_ep == inp,
+	        ("sctp_timeout_handler of type %d: inp = %p, stcb->sctp_ep %p",
+	         type, stcb, stcb->sctp_ep));
 	if (inp) {
 		SCTP_INP_INCR_REF(inp);
 	}
@@ -2259,6 +2264,9 @@ sctp_timer_start(int t_type, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	uint32_t to_ticks;
 	uint32_t rndval, jitter;
 
+	KASSERT(stcb == NULL || stcb->sctp_ep == inp,
+	        ("sctp_timer_start of type %d: inp = %p, stcb->sctp_ep %p",
+	         t_type, stcb, stcb->sctp_ep));
 	tmr = NULL;
 	to_ticks = 0;
 	if (stcb != NULL) {
@@ -2567,7 +2575,7 @@ sctp_timer_start(int t_type, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 #endif
 		}
 		tmr = &inp->sctp_ep.signature_change;
-		to_ticks = MSEC_TO_TICKS(SCTP_INP_KILL_TIMEOUT);
+		to_ticks = sctp_msecs_to_ticks(SCTP_INP_KILL_TIMEOUT);
 		break;
 	case SCTP_TIMER_TYPE_ASOCKILL:
 		if ((inp == NULL) || (stcb == NULL) || (net != NULL)) {
@@ -2579,7 +2587,7 @@ sctp_timer_start(int t_type, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 #endif
 		}
 		tmr = &stcb->asoc.strreset_timer;
-		to_ticks = MSEC_TO_TICKS(SCTP_ASOC_KILL_TIMEOUT);
+		to_ticks = sctp_msecs_to_ticks(SCTP_ASOC_KILL_TIMEOUT);
 		break;
 	case SCTP_TIMER_TYPE_ADDR_WQ:
 		if ((inp != NULL) || (stcb != NULL) || (net != NULL)) {
@@ -2604,7 +2612,7 @@ sctp_timer_start(int t_type, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 #endif
 		}
 		tmr = &stcb->asoc.delete_prim_timer;
-		to_ticks = MSEC_TO_TICKS(stcb->asoc.initial_rto);
+		to_ticks = sctp_msecs_to_ticks(stcb->asoc.initial_rto);
 		break;
 	default:
 #ifdef INVARIANTS
@@ -2692,6 +2700,9 @@ sctp_timer_stop(int t_type, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 {
 	struct sctp_timer *tmr;
 
+	KASSERT(stcb == NULL || stcb->sctp_ep == inp,
+	        ("sctp_timer_stop of type %d: inp = %p, stcb->sctp_ep %p",
+	         t_type, stcb, stcb->sctp_ep));
 	if (stcb != NULL) {
 		SCTP_TCB_LOCK_ASSERT(stcb);
 	} else if (inp != NULL) {
