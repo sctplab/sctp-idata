@@ -1872,8 +1872,9 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		}
 	}
 	/* now do the tests */
-	if (((asoc->cnt_on_all_streams +
-	      asoc->cnt_msg_on_sb) >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue)) ||
+	if (((SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue) > 0) &&
+	     ((asoc->cnt_on_all_streams +
+	       asoc->cnt_msg_on_sb) >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue))) ||
 	    (((int)asoc->my_rwnd) <= 0)) {
 		/*
 		 * When we have NO room in the rwnd we check to make sure
@@ -1908,8 +1909,9 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				/* Nope not in the valid range dump it */
 			dump_packet:
 				sctp_set_rwnd(stcb, asoc);
-				if ((asoc->cnt_on_all_streams +
-				     asoc->cnt_msg_on_sb) >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue)) {
+				if ((SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue) > 0) &&
+				    ((asoc->cnt_on_all_streams +
+				      asoc->cnt_msg_on_sb) >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue))) {
 					SCTP_STAT_INCR(sctps_datadropchklmt);
 				} else {
 					SCTP_STAT_INCR(sctps_datadroprwnd);
@@ -4101,7 +4103,8 @@ sctp_express_handle_sack(struct sctp_tcb *stcb, uint32_t cumack,
 			if (inp->send_callback &&
 			    (((inp->send_sb_threshold > 0) &&
 			      (sb_free_now >= inp->send_sb_threshold) &&
-			      (stcb->asoc.chunks_on_out_queue <= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue))) ||
+			      ((SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue) == 0) ||
+			       (stcb->asoc.chunks_on_out_queue <= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue)))) ||
 			     (inp->send_sb_threshold == 0))) {
 				atomic_add_int(&stcb->asoc.refcnt, 1);
 				SCTP_TCB_UNLOCK(stcb);
