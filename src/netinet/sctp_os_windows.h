@@ -243,6 +243,8 @@ void *sctp_hashinit_flags(int, struct malloc_type *, u_long *, int);
 	M_ALIGN(m, len); \
 }
 
+#define SCTP_SNPRINTF(...) snprintf(__VA_ARGS__)
+
 /* We make it so if you have up to 4 threads
  * writting based on the default size of
  * the packet log 65 k, that would be

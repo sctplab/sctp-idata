@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 361145 2020-05-17 22:31:38Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 361243 2020-05-19 07:23:35Z tuexen $");
 #endif
 
 #ifndef _NETINET_SCTP_OS_BSD_H_
@@ -345,6 +345,8 @@ typedef struct callout sctp_os_timer_t;
 #define SCTP_BUF_PREPEND	M_PREPEND
 
 #define SCTP_ALIGN_TO_END(m, len) M_ALIGN(m, len)
+
+#define SCTP_SNPRINTF(...) snprintf(__VA_ARGS__)
 
 /* We make it so if you have up to 4 threads
  * writing based on the default size of
