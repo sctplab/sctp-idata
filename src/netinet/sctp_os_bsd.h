@@ -102,9 +102,7 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 361243 2020-05-19 07:23:35Z t
 #include <sys/filedesc.h>
 
 #endif
-#if __FreeBSD_version >= 700000
 #include <netinet/ip_options.h>
-#endif
 
 #include <crypto/sha1.h>
 #if defined(SCTP_SUPPORT_HMAC_SHA256)
@@ -148,13 +146,11 @@ MALLOC_DECLARE(SCTP_M_MCORE);
  * depending on whether VIMAGE is defined.
  */
 /* then define the macro(s) that hook into the vimage macros */
-#if defined(__FreeBSD__) && __FreeBSD_version >= 800056
+#if defined(__FreeBSD__)
 #define MODULE_GLOBAL(__SYMBOL) V_##__SYMBOL
-#else
-#define MODULE_GLOBAL(__SYMBOL) (__SYMBOL)
 #endif
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 800056
+#if defined(__FreeBSD__)
 #define V_system_base_info VNET(system_base_info)
 #define SCTP_BASE_INFO(__m) V_system_base_info.sctppcbinfo.__m
 #define SCTP_BASE_STATS V_system_base_info.sctpstat
@@ -238,7 +234,7 @@ MALLOC_DECLARE(SCTP_M_MCORE);
 /*
  * general memory allocation
  */
-#if defined(__FreeBSD__) && __FreeBSD_version >= 800044
+#if defined(__FreeBSD__)
 #define SCTP_MALLOC(var, type, size, name) \
 	do { \
 		var = (type)malloc(size, name, M_NOWAIT); \
@@ -252,7 +248,7 @@ MALLOC_DECLARE(SCTP_M_MCORE);
 
 #define SCTP_FREE(var, type)	free(var, type)
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 800044
+#if defined(__FreeBSD__)
 #define SCTP_MALLOC_SONAME(var, type, size) \
 	do { \
 		var = (type)malloc(size, M_SONAME, M_WAITOK | M_ZERO); \
@@ -291,17 +287,7 @@ typedef struct uma_zone *sctp_zone_t;
 #define SCTP_ZONE_FREE(zone, element) \
 	uma_zfree(zone, element);
 
-#if __FreeBSD_version >= 603000
 #define SCTP_HASH_INIT(size, hashmark) hashinit_flags(size, M_PCB, hashmark, HASH_NOWAIT)
-#else
-void *sctp_hashinit_flags(int elements, struct malloc_type *type,
-                    u_long *hashmask, int flags);
-
-#define HASH_NOWAIT 0x00000001
-#define HASH_WAITOK 0x00000002
-
-#define SCTP_HASH_INIT(size, hashmark) sctp_hashinit_flags(size, M_PCB, hashmark, HASH_NOWAIT)
-#endif
 #define SCTP_HASH_FREE(table, hashmark) hashdestroy(table, M_PCB, hashmark)
 
 #define SCTP_M_COPYM	m_copym
@@ -335,11 +321,7 @@ typedef struct callout sctp_os_timer_t;
 #define SCTP_BUF_RESV_UF(m, size) m->m_data += size
 #define SCTP_BUF_AT(m, size) m->m_data + size
 #define SCTP_BUF_IS_EXTENDED(m) (m->m_flags & M_EXT)
-#if __FreeBSD_version > 1100052
 #define SCTP_BUF_SIZE M_SIZE
-#else
-#define SCTP_BUF_EXTEND_SIZE(m) (m->m_ext.ext_size)
-#endif
 #define SCTP_BUF_TYPE(m) (m->m_type)
 #define SCTP_BUF_RECVIF(m) (m->m_pkthdr.rcvif)
 #define SCTP_BUF_PREPEND	M_PREPEND
@@ -374,11 +356,7 @@ typedef struct callout sctp_os_timer_t;
 /* return the base ext data pointer */
 #define SCTP_BUF_EXTEND_BASE(m) (m->m_ext.ext_buf)
  /* return the refcnt of the data pointer */
-#if (__FreeBSD_version >= 1100020)
 #define SCTP_BUF_EXTEND_REFCNT(m) (*m->m_ext.ext_cnt)
-#else
-#define SCTP_BUF_EXTEND_REFCNT(m) (*m->m_ext.ref_cnt)
-#endif
 /* return any buffer related flags, this is
  * used beyond logging for apple only.
  */
@@ -431,13 +409,11 @@ typedef struct callout sctp_os_timer_t;
 #define SCTP_CLEAR_SO_NBIO(so)	((so)->so_state &= ~SS_NBIO)
 /* get the socket type */
 #define SCTP_SO_TYPE(so)	((so)->so_type)
-#if (__FreeBSD_version >= 1100046)
 /* Use a macro for renaming sb_cc to sb_acc.
  * Initially sb_ccc was used, but this broke select() when used
  * with SCTP sockets.
  */
 #define sb_cc sb_acc
-#endif
 /* reserve sb space for a socket */
 #define SCTP_SORESERVE(so, send, recv)	soreserve(so, send, recv)
 /* wakeup a socket */
@@ -463,17 +439,14 @@ typedef struct route	sctp_route_t;
 	} \
 }
 
-#if __FreeBSD_version > 1000044
 /*
  * SCTP protocol specific mbuf flags.
  */
 #define	M_NOTIFICATION		M_PROTO1	/* SCTP notification */
-#endif
 
 /*
  * IP output routines
  */
-#if __FreeBSD_version > 1000044
 #define SCTP_IP_OUTPUT(result, o_pak, ro, stcb, vrf_id) \
 { \
 	int o_flgs = IP_RAWOUTPUT; \
@@ -497,29 +470,6 @@ typedef struct route	sctp_route_t;
 	else \
 		result = ip6_output(o_pak, NULL, (ro), 0, 0, ifp, NULL); \
 }
-#else
-#define SCTP_IP_OUTPUT(result, o_pak, ro, stcb, vrf_id) \
-{ \
-	int o_flgs = IP_RAWOUTPUT; \
-	struct sctp_tcb *local_stcb = stcb; \
-	if (local_stcb && \
-	    local_stcb->sctp_ep && \
-	    local_stcb->sctp_ep->sctp_socket) \
-		o_flgs |= local_stcb->sctp_ep->sctp_socket->so_options & SO_DONTROUTE; \
-	result = ip_output(o_pak, NULL, ro, o_flgs, 0, NULL); \
-}
-
-#define SCTP_IP6_OUTPUT(result, o_pak, ro, ifp, stcb, vrf_id) \
-{ \
-	struct sctp_tcb *local_stcb = stcb; \
-	if (local_stcb && local_stcb->sctp_ep) \
-		result = ip6_output(o_pak, \
-				    ((struct inpcb *)(local_stcb->sctp_ep))->in6p_outputopts, \
-				    (ro), 0, 0, ifp, NULL); \
-	else \
-		result = ip6_output(o_pak, NULL, (ro), 0, 0, ifp, NULL); \
-}
-#endif
 
 struct mbuf *
 sctp_get_mbuf_for_msg(unsigned int space_needed,
