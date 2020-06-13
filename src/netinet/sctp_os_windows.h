@@ -264,10 +264,6 @@ void *sctp_hashinit_flags(int, struct malloc_type *, u_long *, int);
 		rt->rt_mtu = mtu; \
 	} while(0)
 
-/* (de-)register interface event notifications */
-#define SCTP_REGISTER_INTERFACE(ifhandle, af)
-#define SCTP_DEREGISTER_INTERFACE(ifhandle, af)
-
 /* return the base ext data pointer */
 #define SCTP_BUF_EXTEND_BASE(m)		(caddr_t)(m->m_ext.ext_buf)
  /* return the refcnt of the data pointer */

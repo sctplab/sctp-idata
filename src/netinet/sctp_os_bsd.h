@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 361243 2020-05-19 07:23:35Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 362155 2020-06-13 21:23:26Z tuexen $");
 #endif
 
 #ifndef _NETINET_SCTP_OS_BSD_H_
@@ -344,11 +344,6 @@ typedef struct callout sctp_os_timer_t;
 #define SCTP_GATHER_MTU_FROM_IFN_INFO(ifn, ifn_index, af) ((struct ifnet *)ifn)->if_mtu
 #define SCTP_GATHER_MTU_FROM_ROUTE(sctp_ifa, sa, nh) ((uint32_t)((nh != NULL) ? nh->nh_mtu : 0))
 #define SCTP_GATHER_MTU_FROM_INTFC(sctp_ifn) ((sctp_ifn->ifn_p != NULL) ? ((struct ifnet *)(sctp_ifn->ifn_p))->if_mtu : 0)
-
-/* (de-)register interface event notifications */
-#define SCTP_REGISTER_INTERFACE(ifhandle, af)
-#define SCTP_DEREGISTER_INTERFACE(ifhandle, af)
-
 
 /*************************/
 /* These are for logging */
