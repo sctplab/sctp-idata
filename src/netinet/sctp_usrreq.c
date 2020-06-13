@@ -141,7 +141,7 @@ sctp_init(void)
 #if defined(__Userspace__)
 	sctp_pcb_init(start_threads);
 	if (start_threads) {
-		sctp_start_timer();
+		sctp_start_timer_thread();
 	}
 #else
 	sctp_pcb_init();
@@ -185,15 +185,7 @@ sctp_finish(void)
 #if defined(INET) || defined(INET6)
 	recv_thread_destroy();
 #endif
-	atomic_cmpset_int(&SCTP_BASE_VAR(timer_thread_should_exit), 0, 1);
-	if (SCTP_BASE_VAR(timer_thread_started)) {
-#if defined(_WIN32)
-		WaitForSingleObject(SCTP_BASE_VAR(timer_thread), INFINITE);
-		CloseHandle(SCTP_BASE_VAR(timer_thread));
-#else
-		pthread_join(SCTP_BASE_VAR(timer_thread), NULL);
-#endif
-	}
+	sctp_stop_timer_thread();
 #endif
 	sctp_pcb_finish();
 #if defined(_WIN32) && !defined(__Userspace__)
