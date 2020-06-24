@@ -34,7 +34,7 @@
 
 #if defined(__FreeBSD__) && !defined(__Userspace__)
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_indata.c 362173 2020-06-14 09:50:00Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_indata.c 362581 2020-06-24 14:47:51Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -1131,6 +1131,16 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc,
 #endif
 				SCTP_STAT_INCR_COUNTER64(sctps_reasmusrmsgs);
 				TAILQ_REMOVE(&strm->uno_inqueue, control, next_instrm);
+				if (asoc->size_on_all_streams >= control->length) {
+					asoc->size_on_all_streams -= control->length;
+				} else {
+#ifdef INVARIANTS
+					panic("size_on_all_streams = %u smaller than control length %u", asoc->size_on_all_streams, control->length);
+#else
+					asoc->size_on_all_streams = 0;
+#endif
+				}
+				sctp_ucount_decr(asoc->cnt_on_all_streams);
 				control->on_strm_q = 0;
 			}
 			if (control->on_read_q == 0) {
@@ -1367,6 +1377,9 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	}
 	/* Must be added to the stream-in queue */
 	if (created_control) {
+		if ((unordered == 0) || (asoc->idata_supported)) {
+			sctp_ucount_incr(asoc->cnt_on_all_streams);
+		}
 		if (sctp_place_control_in_stream(strm, asoc, control)) {
 			/* Duplicate SSN? */
 			sctp_abort_in_reasm(stcb, control, chk,
@@ -1375,7 +1388,6 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			sctp_clean_up_control(stcb, control);
 			return;
 		}
-		sctp_ucount_incr(asoc->cnt_on_all_streams);
 		if ((tsn == (asoc->cumulative_tsn + 1) && (asoc->idata_supported == 0))) {
 			/* Ok we created this control and now
 			 * lets validate that its legal i.e. there
