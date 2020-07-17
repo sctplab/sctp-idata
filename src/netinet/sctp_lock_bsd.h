@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_lock_bsd.h 359234 2020-03-23 12:17:13Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_lock_bsd.h 363275 2020-07-17 15:09:49Z tuexen $");
 #endif
 
 #ifndef _NETINET_SCTP_LOCK_BSD_H_
@@ -179,6 +179,13 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_lock_bsd.h 359234 2020-03-23 12:17:13Z
 	rw_wunlock(&SCTP_BASE_INFO(ipi_addr_mtx));			\
 } while (0)
 
+#define SCTP_IPI_ADDR_LOCK_ASSERT() do {				\
+	rw_assert(&SCTP_BASE_INFO(ipi_addr_mtx), RA_LOCKED);		\
+} while (0)
+
+#define SCTP_IPI_ADDR_WLOCK_ASSERT() do {				\
+	rw_assert(&SCTP_BASE_INFO(ipi_addr_mtx), RA_WLOCKED);		\
+} while (0)
 
 #define SCTP_IPI_ITERATOR_WQ_INIT() do {				\
 	mtx_init(&sctp_it_ctl.ipi_iterator_wq_mtx, "sctp-it-wq",	\

@@ -161,10 +161,13 @@ extern LARGE_INTEGER zero_timeout;
 	rwlock_release(&SCTP_BASE_INFO(ipi_addr_lock)); \
 } while (0)
 
-
 #define SCTP_IPI_ADDR_WUNLOCK() do { \
 	rwlock_release(&SCTP_BASE_INFO(ipi_addr_lock)); \
 } while (0)
+
+#define SCTP_IPI_ADDR_LOCK_ASSERT()
+
+#define SCTP_IPI_ADDR_WLOCK_ASSERT()
 
 #define SCTP_IPI_ITERATOR_WQ_INIT() do { \
 	spinlock_init(&sctp_it_ctl.ipi_iterator_wq_lock, "sctp-it-wq", "sctp_it_wq", 0); \
