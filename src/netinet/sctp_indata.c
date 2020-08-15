@@ -4132,7 +4132,7 @@ sctp_express_handle_sack(struct sctp_tcb *stcb, uint32_t cumack,
 			     (inp->send_sb_threshold == 0))) {
 				atomic_add_int(&stcb->asoc.refcnt, 1);
 				SCTP_TCB_UNLOCK(stcb);
-				inp->send_callback(stcb->sctp_socket, sb_free_now);
+				inp->send_callback(stcb->sctp_socket, sb_free_now, inp->ulp_info);
 				SCTP_TCB_LOCK(stcb);
 				atomic_subtract_int(&stcb->asoc.refcnt, 1);
 			}
@@ -4860,7 +4860,7 @@ sctp_handle_sack(struct mbuf *m, int offset_seg, int offset_dup,
 			    (inp->send_sb_threshold == 0))) {
 				atomic_add_int(&stcb->asoc.refcnt, 1);
 				SCTP_TCB_UNLOCK(stcb);
-				inp->send_callback(stcb->sctp_socket, sb_free_now);
+				inp->send_callback(stcb->sctp_socket, sb_free_now, inp->ulp_info);
 				SCTP_TCB_LOCK(stcb);
 				atomic_subtract_int(&stcb->asoc.refcnt, 1);
 			}
