@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 363323 2020-07-19 12:34:19Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_os_bsd.h 365071 2020-09-01 21:19:14Z mjg $");
 #endif
 
 #ifndef _NETINET_SCTP_OS_BSD_H_
@@ -210,7 +210,6 @@ MALLOC_DECLARE(SCTP_M_MCORE);
 #define SCTP_LTRACE_ERR_RET(inp, stcb, net, file, err)
 #endif
 
-
 /*
  * Local address and interface list handling
  */
@@ -300,7 +299,6 @@ typedef struct uma_zone *sctp_zone_t;
 #include <sys/callout.h>
 typedef struct callout sctp_os_timer_t;
 
-
 #define SCTP_OS_TIMER_INIT(tmr)	callout_init(tmr, 1)
 /*
  * NOTE: The next two shouldn't be called directly outside of sctp_timer_start()
@@ -382,8 +380,6 @@ typedef struct callout sctp_os_timer_t;
 
 #define SCTP_GET_PKT_VRFID(m, vrf_id)  ((vrf_id = SCTP_DEFAULT_VRFID) != SCTP_DEFAULT_VRFID)
 
-
-
 /* Attach the chain of data into the sendable packet. */
 #define SCTP_ATTACH_CHAIN(pak, m, packet_length) do { \
                                                  pak = m; \
@@ -393,7 +389,6 @@ typedef struct callout sctp_os_timer_t;
 /* Other m_pkthdr type things */
 #define SCTP_IS_IT_BROADCAST(dst, m) ((m->m_flags & M_PKTHDR) ? in_broadcast(dst, m->m_pkthdr.rcvif) : 0)
 #define SCTP_IS_IT_LOOPBACK(m) ((m->m_flags & M_PKTHDR) && ((m->m_pkthdr.rcvif == NULL) || (m->m_pkthdr.rcvif->if_type == IFT_LOOP)))
-
 
 /* This converts any input packet header
  * into the chain of data holders, for BSD
@@ -476,7 +471,6 @@ typedef struct route	sctp_route_t;
 struct mbuf *
 sctp_get_mbuf_for_msg(unsigned int space_needed,
 		      int want_header, int how, int allonebuf, int type);
-
 
 /*
  * SCTP AUTH
