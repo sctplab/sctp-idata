@@ -1111,7 +1111,7 @@ sctp_deliver_reasm_check(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			/* We just put the last bit on */
 			if (control->on_strm_q) {
 #ifdef INVARIANTS
-				if (control->on_strm_q != SCTP_ON_UNORDERED ) {
+				if (control->on_strm_q != SCTP_ON_UNORDERED) {
 					panic("Huh control: %p on_q: %d -- not unordered?",
 					      control, control->on_strm_q);
 				}
@@ -1175,7 +1175,7 @@ done_un:
 		if (control->end_added) {
 			if (control->on_strm_q) {
 #ifdef INVARIANTS
-				if (control->on_strm_q != SCTP_ON_ORDERED ) {
+				if (control->on_strm_q != SCTP_ON_ORDERED) {
 					panic("Huh control: %p on_q: %d -- not ordered?",
 					      control, control->on_strm_q);
 				}
@@ -1219,7 +1219,7 @@ deliver_more:
 				/* We are done with it afterwards */
 				if (control->on_strm_q) {
 #ifdef INVARIANTS
-					if (control->on_strm_q != SCTP_ON_ORDERED ) {
+					if (control->on_strm_q != SCTP_ON_ORDERED) {
 						panic("Huh control: %p on_q: %d -- not ordered?",
 						      control, control->on_strm_q);
 					}
