@@ -13831,7 +13831,8 @@ sctp_lower_sosend(struct socket *so,
 			amount = 1;
 		}
 		if ((SCTP_SB_LIMIT_SND(so) <  (amount + inqueue_bytes + stcb->asoc.sb_send_resv)) ||
-		    (stcb->asoc.chunks_on_out_queue >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue))) {
+		    ((SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue) > 0) &&
+		     (stcb->asoc.chunks_on_out_queue >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue)))) {
 			SCTP_LTRACE_ERR_RET(inp, stcb, net, SCTP_FROM_SCTP_OUTPUT, EWOULDBLOCK);
 			if (sndlen > (ssize_t)SCTP_SB_LIMIT_SND(so))
 				error = EMSGSIZE;
@@ -14065,12 +14066,14 @@ sctp_lower_sosend(struct socket *so,
 	if (((max_len <= local_add_more) &&
 	     ((ssize_t)SCTP_SB_LIMIT_SND(so) >= local_add_more)) ||
 	    (max_len == 0) ||
-	    ((stcb->asoc.chunks_on_out_queue+stcb->asoc.stream_queue_cnt) >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue))) {
+	    ((SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue) > 0) &&
+	     ((stcb->asoc.chunks_on_out_queue+stcb->asoc.stream_queue_cnt) >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue)))) {
 		/* No room right now ! */
 		SOCKBUF_LOCK(&so->so_snd);
 		inqueue_bytes = stcb->asoc.total_output_queue_size - (stcb->asoc.chunks_on_out_queue * SCTP_DATA_CHUNK_OVERHEAD(stcb));
 		while ((SCTP_SB_LIMIT_SND(so) < (inqueue_bytes + local_add_more)) ||
-		       ((stcb->asoc.stream_queue_cnt + stcb->asoc.chunks_on_out_queue) >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue))) {
+		       ((SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue) > 0) &&
+		        ((stcb->asoc.stream_queue_cnt + stcb->asoc.chunks_on_out_queue) >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue)))) {
 			SCTPDBG(SCTP_DEBUG_OUTPUT1,"pre_block limit:%u <(inq:%d + %zd) || (%d+%d > %d)\n",
 			        (unsigned int)SCTP_SB_LIMIT_SND(so),
 			        inqueue_bytes,
