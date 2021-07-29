@@ -560,7 +560,8 @@ sctp_process_init_ack(struct mbuf *m, int iphlen, int offset,
 			if (inp->send_callback &&
 			    (((inp->send_sb_threshold > 0) &&
 			      (sb_free_now >= inp->send_sb_threshold) &&
-			      (stcb->asoc.chunks_on_out_queue <= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue))) ||
+			      ((SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue) == 0) ||
+			       (stcb->asoc.chunks_on_out_queue <= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue)))) ||
 			     (inp->send_sb_threshold == 0))) {
 				atomic_add_int(&stcb->asoc.refcnt, 1);
 				SCTP_TCB_UNLOCK(stcb);
