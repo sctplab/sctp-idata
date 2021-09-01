@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_lock_bsd.h 366114 2020-09-24 12:26:06Z tuexen $");
+__FBSDID("$FreeBSD$");
 #endif
 
 #ifndef _NETINET_SCTP_LOCK_BSD_H_
@@ -107,6 +107,18 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_lock_bsd.h 366114 2020-09-24 12:26:06Z
 
 #define SCTP_INP_INFO_WUNLOCK() do {					\
 	rw_wunlock(&SCTP_BASE_INFO(ipi_ep_mtx));			\
+} while (0)
+
+#define SCTP_INP_INFO_LOCK_ASSERT() do {				\
+	rw_assert(&SCTP_BASE_INFO(ipi_ep_mtx), RA_LOCKED);		\
+} while (0)
+
+#define SCTP_INP_INFO_RLOCK_ASSERT() do {				\
+	rw_assert(&SCTP_BASE_INFO(ipi_ep_mtx), RA_RLOCKED);		\
+} while (0)
+
+#define SCTP_INP_INFO_WLOCK_ASSERT() do {				\
+	rw_assert(&SCTP_BASE_INFO(ipi_ep_mtx), RA_WLOCKED);		\
 } while (0)
 
 #define SCTP_MCORE_QLOCK_INIT(cpstr) do {				\

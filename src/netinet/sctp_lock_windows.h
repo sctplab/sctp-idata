@@ -123,6 +123,12 @@ extern LARGE_INTEGER zero_timeout;
 	rwlock_release(&SCTP_BASE_INFO(ipi_ep_lock)); \
 } while (0)
 
+#define SCTP_INP_INFO_LOCK_ASSERT()
+
+#define SCTP_INP_INFO_RLOCK_ASSERT()
+
+#define SCTP_INP_INFO_WLOCK_ASSERT()
+
 
 #define SCTP_WQ_ADDR_INIT() do { \
 	rwlock_init(&SCTP_BASE_INFO(wq_addr_mtx), "sctp-addr-wq","sctp_addr_wq", 0); \
