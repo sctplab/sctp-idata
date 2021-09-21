@@ -116,6 +116,7 @@ __FBSDID("$FreeBSD$");
 #define SCTP_TCB_SEND_LOCK_DESTROY(_tcb)
 #define SCTP_TCB_SEND_LOCK(_tcb)
 #define SCTP_TCB_SEND_UNLOCK(_tcb)
+#define SCTP_TCB_SEND_LOCK_ASSERT(_tcb)
 
 
 /* socket locks that are not here in other than 5.3 > FreeBSD */

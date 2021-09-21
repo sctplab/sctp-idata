@@ -358,6 +358,13 @@ __inline int _SCTP_TCB_TRYLOCK(struct sctp_tcb *tcb, char *filename, int lineno)
 	spinlock_release(&(_tcb)->tcb_send_lock); \
 } while (0)
 
+#ifdef INVARIANTS
+#define SCTP_TCB_SEND_LOCK_ASSERT(_tcb) \
+	_ASSERT(KeReadStateMutex(&(_tcb)->tcb_send_lock) == 0)
+#else
+#define SCTP_TCB_SEND_LOCK_ASSERT(_tcb)
+#endif
+
 
 #define SCTP_RADDR_INCR_REF(_net) do { \
 	atomic_add_int(&(_net)->ref_count, 1); \
