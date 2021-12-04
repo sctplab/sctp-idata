@@ -389,7 +389,7 @@ extern uint16_t ip_id;
 #define SCTP_IP_ID(inp) (ip_id)
 
 NTSTATUS IPOutput(IN struct mbuf *, IN struct route *);
-#define SCTP_IP_OUTPUT(result, o_pak, ro, stcb, vrf_id) \
+#define SCTP_IP_OUTPUT(result, o_pak, ro, inp, vrf_id) \
 { \
 	NTSTATUS status; \
 	status = IPOutput(o_pak, ro); \
@@ -401,7 +401,7 @@ NTSTATUS IPOutput(IN struct mbuf *, IN struct route *);
 }
 
 NTSTATUS IP6Output(IN struct mbuf *, IN struct route *);
-#define SCTP_IP6_OUTPUT(result, o_pak, ro, ifp, stcb, vrf_id) \
+#define SCTP_IP6_OUTPUT(result, o_pak, ro, ifp, inp, vrf_id) \
 { \
 	NTSTATUS status; \
 	status = IP6Output(o_pak, (struct route *)ro); \
