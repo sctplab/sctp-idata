@@ -80,6 +80,8 @@ sctp_build_ctl_nchunk(struct sctp_inpcb *inp,
                       struct sctp_sndrcvinfo *sinfo);
 
 void sctp_set_rwnd(struct sctp_tcb *, struct sctp_association *);
+void
+sctp_subtract_frm_stream(struct sctp_tcb *stcb, uint32_t len);
 
 uint32_t
 sctp_calc_rwnd(struct sctp_tcb *stcb, struct sctp_association *asoc);
