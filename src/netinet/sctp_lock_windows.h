@@ -342,30 +342,6 @@ __inline int _SCTP_TCB_TRYLOCK(struct sctp_tcb *tcb, char *filename, int lineno)
 } while (0)
 
 
-#define SCTP_TCB_SEND_LOCK_INIT(_tcb) do { \
-	spinlock_init(&(_tcb)->tcb_send_lock, "sctp-send-tcb", "tcbs", 0); \
-} while (0)
-
-#define SCTP_TCB_SEND_LOCK_DESTROY(_tcb) do { \
-	spinlock_destroy(&(_tcb)->tcb_send_lock); \
-} while (0)
-
-#define SCTP_TCB_SEND_LOCK(_tcb) do { \
-	spinlock_acquire(&(_tcb)->tcb_send_lock); \
-} while (0)
-
-#define SCTP_TCB_SEND_UNLOCK(_tcb) do { \
-	spinlock_release(&(_tcb)->tcb_send_lock); \
-} while (0)
-
-#ifdef INVARIANTS
-#define SCTP_TCB_SEND_LOCK_ASSERT(_tcb) \
-	_ASSERT(KeReadStateMutex(&(_tcb)->tcb_send_lock) == 0)
-#else
-#define SCTP_TCB_SEND_LOCK_ASSERT(_tcb)
-#endif
-
-
 #define SCTP_RADDR_INCR_REF(_net) do { \
 	atomic_add_int(&(_net)->ref_count, 1); \
 } while (0)
