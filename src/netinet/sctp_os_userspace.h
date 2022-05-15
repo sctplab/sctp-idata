@@ -960,6 +960,8 @@ int sctp_userspace_get_mtu_from_ifn(uint32_t if_index);
 
 /* wakeup a socket */
 #define SCTP_SOWAKEUP(so)	wakeup(&(so)->so_timeo, so)
+/* number of bytes ready to read */
+#define SCTP_SBAVAIL(sb)	(sb)->sb_cc
 /* clear the socket buffer state */
 #define SCTP_SB_CLEAR(sb)	\
 	(sb).sb_cc = 0;		\
