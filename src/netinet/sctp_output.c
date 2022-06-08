@@ -13433,7 +13433,6 @@ sctp_lower_sosend(struct socket *so,
 	bool free_cnt_applied = false;
 	bool some_on_control;
 	bool got_all_of_the_send = false;
-	bool hold_tcblock = false;
 	bool non_blocking = false;
 
 	error = 0;
@@ -13584,7 +13583,6 @@ sctp_lower_sosend(struct socket *so,
 		stcb = LIST_FIRST(&inp->sctp_asoc_list);
 		if (stcb != NULL) {
 			SCTP_TCB_LOCK(stcb);
-			hold_tcblock = true;
 		}
 		SCTP_INP_RUNLOCK(inp);
 	} else if (sinfo_assoc_id > SCTP_ALL_ASSOC) {
@@ -13592,7 +13590,6 @@ sctp_lower_sosend(struct socket *so,
 		SCTP_INP_RUNLOCK(inp);
 		if (stcb != NULL) {
 			SCTP_TCB_LOCK_ASSERT(stcb);
-			hold_tcblock = true;
 		}
 	} else if (addr != NULL) {
 		/*-
@@ -13609,7 +13606,6 @@ sctp_lower_sosend(struct socket *so,
 			SCTP_INP_WUNLOCK(inp);
 		} else {
 			SCTP_TCB_LOCK_ASSERT(stcb);
-			hold_tcblock = true;
 		}
 	} else {
 		SCTP_INP_RUNLOCK(inp);
@@ -13618,11 +13614,9 @@ sctp_lower_sosend(struct socket *so,
 #ifdef INVARIANTS
 	if (stcb != NULL) {
 		SCTP_TCB_LOCK_ASSERT(stcb);
-		KASSERT(hold_tcblock, ("tcb lock hold, hold_tcblock is false"));
-	} else {
-		KASSERT(!hold_tcblock, ("hold_tcblock is true, but stcb is NULL"));
 	}
 #endif
+
 	if ((stcb == NULL) && (addr != NULL)) {
 		/* Possible implicit send? */
 		SCTP_ASOC_CREATE_LOCK(inp);
@@ -13653,7 +13647,6 @@ sctp_lower_sosend(struct socket *so,
 			SCTP_INP_WUNLOCK(inp);
 		} else {
 			SCTP_TCB_LOCK_ASSERT(stcb);
-			hold_tcblock = true;
 			SCTP_ASOC_CREATE_UNLOCK(inp);
 			create_lock_applied = false;
 		}
@@ -13700,7 +13693,6 @@ sctp_lower_sosend(struct socket *so,
 				goto out_unlocked;
 			}
 			SCTP_TCB_LOCK_ASSERT(stcb);
-			hold_tcblock = true;
 			SCTP_ASOC_CREATE_UNLOCK(inp);
 			create_lock_applied = false;
 			/* Turn on queue only flag to prevent data from being sent */
@@ -13711,7 +13703,6 @@ sctp_lower_sosend(struct socket *so,
 				if (sctp_process_cmsgs_for_init(stcb, control, &error)) {
 					sctp_free_assoc(inp, stcb, SCTP_NORMAL_PROC,
 					                SCTP_FROM_SCTP_OUTPUT + SCTP_LOC_6);
-					hold_tcblock = false;
 					stcb = NULL;
 					KASSERT(error != 0,
 					    ("error is 0 although sctp_process_cmsgs_for_init() indicated an error"));
@@ -13731,7 +13722,6 @@ sctp_lower_sosend(struct socket *so,
 
 	KASSERT(!create_lock_applied, ("create_lock_applied is true"));
 	KASSERT(stcb != NULL, ("stcb is NULL"));
-	KASSERT(hold_tcblock, ("hold_tcblock is false"));
 	SCTP_TCB_LOCK_ASSERT(stcb);
 
 	asoc = &stcb->asoc;
@@ -13846,7 +13836,6 @@ sctp_lower_sosend(struct socket *so,
 	local_soresv = sndlen;
 
 	KASSERT(stcb != NULL, ("stcb is NULL"));
-	KASSERT(hold_tcblock, ("hold_tcblock is false"));
 	SCTP_TCB_LOCK_ASSERT(stcb);
 	KASSERT((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) == 0,
 	        ("Association about to be freed"));
@@ -13902,7 +13891,6 @@ sctp_lower_sosend(struct socket *so,
 		SCTP_BUF_LEN(mm) = (int)(tot_out + sizeof(struct sctp_paramhdr));
 		if (top == NULL) {
 			SCTP_TCB_UNLOCK(stcb);
-			hold_tcblock = false;
 #if defined(__APPLE__) && !defined(__Userspace__)
 			SCTP_SOCKET_UNLOCK(so, 0);
 #endif
@@ -13911,7 +13899,6 @@ sctp_lower_sosend(struct socket *so,
 			SCTP_SOCKET_LOCK(so, 0);
 #endif
 			SCTP_TCB_LOCK(stcb);
-			hold_tcblock = true;
 			if ((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) ||
 			    (asoc->state & SCTP_STATE_WAS_ABORTED)) {
 				sctp_m_freem(mm);
@@ -13961,7 +13948,6 @@ sctp_lower_sosend(struct socket *so,
 	}
 
 	KASSERT(stcb != NULL, ("stcb is NULL"));
-	KASSERT(hold_tcblock, ("hold_tcblock is false"));
 	SCTP_TCB_LOCK_ASSERT(stcb);
 	KASSERT((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) == 0,
 	        ("Association about to be freed"));
@@ -14028,7 +14014,6 @@ sctp_lower_sosend(struct socket *so,
 			stcb->block_entry = &be;
 #endif
 			SCTP_TCB_UNLOCK(stcb);
-			hold_tcblock = false;
 #if defined(__FreeBSD__) && !defined(__Userspace__)
 			error = sbwait(so, SO_SND);
 #else
@@ -14044,7 +14029,6 @@ sctp_lower_sosend(struct socket *so,
 			}
 			SOCKBUF_UNLOCK(&so->so_snd);
 			SCTP_TCB_LOCK(stcb);
-			hold_tcblock = true;
 			stcb->block_entry = NULL;
 			if (error != 0) {
 				goto out_unlocked;
@@ -14076,7 +14060,6 @@ sctp_lower_sosend(struct socket *so,
 
 skip_preblock:
 	KASSERT(stcb != NULL, ("stcb is NULL"));
-	KASSERT(hold_tcblock, ("hold_tcblock is false"));
 	SCTP_TCB_LOCK_ASSERT(stcb);
 	KASSERT((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) == 0,
 	        ("Association about to be freed"));
@@ -14117,10 +14100,8 @@ skip_preblock:
 		if (strm->last_msg_incomplete == 0) {
 		do_a_copy_in:
 			SCTP_TCB_UNLOCK(stcb);
-			hold_tcblock = false;
 			sp = sctp_copy_it_in(stcb, asoc, sndrcvninfo, uio, net, max_len, user_marks_eor, &error);
 			SCTP_TCB_LOCK(stcb);
-			hold_tcblock = true;
 			if ((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) ||
 			    (asoc->state & SCTP_STATE_WAS_ABORTED)) {
 				if (asoc->state & SCTP_STATE_WAS_ABORTED) {
@@ -14201,7 +14182,6 @@ skip_preblock:
 		}
 
 		KASSERT(stcb != NULL, ("stcb is NULL"));
-		KASSERT(hold_tcblock, ("hold_tcblock is false"));
 		SCTP_TCB_LOCK_ASSERT(stcb);
 		KASSERT((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) == 0,
 		        ("Association about to be freed"));
@@ -14238,7 +14218,6 @@ skip_preblock:
 			    (uio->uio_resid <= max_len)) {
 #endif
 				SCTP_TCB_UNLOCK(stcb);
-				hold_tcblock = false;
 #if defined(__APPLE__) && !defined(__Userspace__)
 				SCTP_SOCKET_UNLOCK(so, 0);
 #endif
@@ -14253,7 +14232,6 @@ skip_preblock:
 				SCTP_SOCKET_LOCK(so, 0);
 #endif
 				SCTP_TCB_LOCK(stcb);
-				hold_tcblock = true;
 				if ((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) ||
 				    (asoc->state & SCTP_STATE_WAS_ABORTED)) {
 					/* We need to get out.
@@ -14312,7 +14290,6 @@ skip_preblock:
 			}
 
 			KASSERT(stcb != NULL, ("stcb is NULL"));
-			KASSERT(hold_tcblock, ("hold_tcblock is false"));
 			SCTP_TCB_LOCK_ASSERT(stcb);
 			KASSERT((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) == 0,
 			        ("Association about to be freed"));
@@ -14467,7 +14444,6 @@ skip_preblock:
 				stcb->block_entry = &be;
 #endif
 				SCTP_TCB_UNLOCK(stcb);
-				hold_tcblock = false;
 #if defined(__APPLE__) && !defined(__Userspace__)
 				sbunlock(&so->so_snd, 1);
 #endif
@@ -14485,7 +14461,6 @@ skip_preblock:
 				}
 				SOCKBUF_UNLOCK(&so->so_snd);
 				SCTP_TCB_LOCK(stcb);
-				hold_tcblock = true;
 				stcb->block_entry = NULL;
 				if ((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) ||
 				    (asoc->state & SCTP_STATE_WAS_ABORTED)) {
@@ -14519,7 +14494,6 @@ skip_preblock:
 		}
 
 		KASSERT(stcb != NULL, ("stcb is NULL"));
-		KASSERT(hold_tcblock, ("hold_tcblock is false"));
 		SCTP_TCB_LOCK_ASSERT(stcb);
 		KASSERT((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) == 0,
 		        ("Association about to be freed"));
@@ -14570,7 +14544,6 @@ skip_preblock:
 
 dataless_eof:
 	KASSERT(stcb != NULL, ("stcb is NULL"));
-	KASSERT(hold_tcblock, ("hold_tcblock is false"));
 	SCTP_TCB_LOCK_ASSERT(stcb);
 	KASSERT((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) == 0,
 	        ("Association about to be freed"));
@@ -14651,7 +14624,6 @@ dataless_eof:
 #if defined(__FreeBSD__) && !defined(__Userspace__)
 					NET_EPOCH_EXIT(et);
 #endif
-					hold_tcblock = false;
 					stcb = NULL;
 					error = ECONNABORTED;
 					goto out;
@@ -14665,7 +14637,6 @@ dataless_eof:
 
 skip_out_eof:
 	KASSERT(stcb != NULL, ("stcb is NULL"));
-	KASSERT(hold_tcblock, ("hold_tcblock is false"));
 	SCTP_TCB_LOCK_ASSERT(stcb);
 	KASSERT((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) == 0,
 	        ("Association about to be freed"));
@@ -14691,7 +14662,6 @@ skip_out_eof:
 	}
 
 	KASSERT(stcb != NULL, ("stcb is NULL"));
-	KASSERT(hold_tcblock, ("hold_tcblock is false"));
 	SCTP_TCB_LOCK_ASSERT(stcb);
 	KASSERT((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) == 0,
 	        ("Association about to be freed"));
@@ -14741,7 +14711,6 @@ skip_out_eof:
 	}
 
 	KASSERT(stcb != NULL, ("stcb is NULL"));
-	KASSERT(hold_tcblock, ("hold_tcblock is false"));
 	SCTP_TCB_LOCK_ASSERT(stcb);
 	KASSERT((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) == 0,
 	        ("Association about to be freed"));
@@ -14776,7 +14745,6 @@ skip_out_eof:
 	        asoc->total_output_queue_size, error);
 
 	KASSERT(stcb != NULL, ("stcb is NULL"));
-	KASSERT(hold_tcblock, ("hold_tcblock is false"));
 	SCTP_TCB_LOCK_ASSERT(stcb);
 	KASSERT((asoc->state & SCTP_STATE_ABOUT_TO_BE_FREED) == 0,
 	        ("Association about to be freed"));
@@ -14795,12 +14763,10 @@ out_unlocked:
 		if (local_soresv) {
 			atomic_subtract_int(&asoc->sb_send_resv, (int)sndlen);
 		}
-		if (hold_tcblock) {
-			SCTP_TCB_UNLOCK(stcb);
-		}
 		if (free_cnt_applied) {
 			atomic_subtract_int(&asoc->refcnt, 1);
 		}
+		SCTP_TCB_UNLOCK(stcb);
 	}
 	if (top != NULL) {
 		sctp_m_freem(top);
