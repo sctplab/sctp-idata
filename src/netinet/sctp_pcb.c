@@ -7929,16 +7929,18 @@ sctp_drain_mbufs(struct sctp_tcb *stcb)
 	 */
 }
 
+#if defined(__FreeBSD__) && !defined(__Userspace__)
+static void
+#else
 void
+#endif
 sctp_drain(void)
 {
-	/*
-	 * We must walk the PCB lists for ALL associations here. The system
-	 * is LOW on MBUF's and needs help. This is where reneging will
-	 * occur. We really hope this does NOT happen!
-	 */
 #if defined(__FreeBSD__) && !defined(__Userspace__)
+	struct epoch_tracker et;
 	VNET_ITERATOR_DECL(vnet_iter);
+
+	NET_EPOCH_ENTER(et);
 #else
 	struct sctp_inpcb *inp;
 	struct sctp_tcb *stcb;
@@ -7948,6 +7950,11 @@ sctp_drain(void)
 		return;
 	}
 #endif
+	/*
+	 * We must walk the PCB lists for ALL associations here. The system
+	 * is LOW on MBUF's and needs help. This is where reneging will
+	 * occur. We really hope this does NOT happen!
+	 */
 #if defined(__FreeBSD__) && !defined(__Userspace__)
 	VNET_LIST_RLOCK_NOSLEEP();
 	VNET_FOREACH(vnet_iter) {
@@ -7962,6 +7969,7 @@ sctp_drain(void)
 #ifdef VIMAGE
 			continue;
 #else
+			NET_EPOCH_EXIT(et);
 			return;
 #endif
 		}
@@ -7983,8 +7991,13 @@ sctp_drain(void)
 		CURVNET_RESTORE();
 	}
 	VNET_LIST_RUNLOCK_NOSLEEP();
+	NET_EPOCH_EXIT(et);
 #endif
 }
+#if defined(__FreeBSD__) && !defined(__Userspace__)
+EVENTHANDLER_DEFINE(vm_lowmem, sctp_drain, NULL, LOWMEM_PRI_DEFAULT);
+EVENTHANDLER_DEFINE(mbuf_lowmem, sctp_drain, NULL, LOWMEM_PRI_DEFAULT);
+#endif
 
 /*
  * start a new iterator
