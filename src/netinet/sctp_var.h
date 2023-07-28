@@ -207,7 +207,7 @@ extern struct pr_usrreqs sctp_usrreqs;
 }
 
 #define sctp_sbfree(ctl, stcb, sb, m) { \
-	SCTP_SAVE_ATOMIC_DECREMENT(&(sb)->sb_cc, SCTP_BUF_LEN((m))); \
+	SCTP_SB_DECR(sb, SCTP_BUF_LEN((m))); \
 	SCTP_SAVE_ATOMIC_DECREMENT(&(sb)->sb_mbcnt, MSIZE); \
 	if (((ctl)->do_not_ref_stcb == 0) && stcb) {\
 		SCTP_SAVE_ATOMIC_DECREMENT(&(stcb)->asoc.sb_cc, SCTP_BUF_LEN((m))); \
@@ -219,16 +219,15 @@ extern struct pr_usrreqs sctp_usrreqs;
 }
 
 #define sctp_sballoc(stcb, sb, m) { \
-	sctp_subtract_frm_stream((stcb), SCTP_BUF_LEN((m)));		\
-	(sb)->sb_cc += SCTP_BUF_LEN((m));				\
-	(sb)->sb_mbcnt += MSIZE;					\
-	if (stcb) { 							\
-		(stcb)->asoc.sb_cc += SCTP_BUF_LEN((m));		\
-		(stcb)->asoc.my_rwnd_control_len += MSIZE;		\
-	} 								\
+	SCTP_SB_INCR(sb, SCTP_BUF_LEN((m))); \
+	atomic_add_int(&(sb)->sb_mbcnt, MSIZE); \
+	if (stcb) { \
+		atomic_add_int(&(stcb)->asoc.sb_cc, SCTP_BUF_LEN((m))); \
+		atomic_add_int(&(stcb)->asoc.my_rwnd_control_len, MSIZE); \
+	} \
 	if (SCTP_BUF_TYPE(m) != MT_DATA && SCTP_BUF_TYPE(m) != MT_HEADER && \
 	    SCTP_BUF_TYPE(m) != MT_OOBDATA) \
-		(sb)->sb_ctl += SCTP_BUF_LEN((m));	\
+		atomic_add_int(&(sb)->sb_ctl,SCTP_BUF_LEN((m))); \
 }
 #else				/* FreeBSD Version <= 500000 or non-FreeBSD */
 #define sctp_free_remote_addr(__net) { \
@@ -251,7 +250,7 @@ extern struct pr_usrreqs sctp_usrreqs;
 }
 
 #define sctp_sbfree(ctl, stcb, sb, m) { \
-	SCTP_SAVE_ATOMIC_DECREMENT(&(sb)->sb_cc, SCTP_BUF_LEN((m))); \
+	SCTP_SB_DECR(sb, SCTP_BUF_LEN((m))); \
 	SCTP_SAVE_ATOMIC_DECREMENT(&(sb)->sb_mbcnt, MSIZE); \
 	if (((ctl)->do_not_ref_stcb == 0) && stcb) { \
 		SCTP_SAVE_ATOMIC_DECREMENT(&(stcb)->asoc.sb_cc, SCTP_BUF_LEN((m))); \
@@ -259,14 +258,13 @@ extern struct pr_usrreqs sctp_usrreqs;
 	} \
 }
 
-#define sctp_sballoc(stcb, sb, m) { 				\
-	(sb)->sb_cc += SCTP_BUF_LEN((m)); 			\
-	(sb)->sb_mbcnt += MSIZE; 				\
-	sctp_subtract_frm_stream((stcb), SCTP_BUF_LEN((m)));	\
-	if (stcb) { 						\
-		(stcb)->asoc.sb_cc += SCTP_BUF_LEN((m)); 	\
-		(stcb)->asoc.my_rwnd_control_len +=  MSIZE; 	\
-	} 							\
+#define sctp_sballoc(stcb, sb, m) { \
+	SCTP_SB_INCR(sb, SCTP_BUF_LEN((m))); \
+	atomic_add_int(&(sb)->sb_mbcnt, MSIZE); \
+	if (stcb) { \
+		atomic_add_int(&(stcb)->asoc.sb_cc, SCTP_BUF_LEN((m))); \
+		atomic_add_int(&(stcb)->asoc.my_rwnd_control_len, MSIZE); \
+	} \
 }
 #endif
 

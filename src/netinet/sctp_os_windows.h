@@ -352,6 +352,14 @@ sctp_get_tick_count(void)
 #define SCTP_SOWAKEUP(so)	KeSetEvent(&(so)->so_waitEvent, 0, FALSE)
 /* number of bytes ready to read */
 #define SCTP_SBAVAIL(sb)	(sb)->sb_cc
+#define SCTP_SB_INCR(sb, incr)			\
+{						\
+	atomic_add_int(&(sb)->sb_cc, incr);	\
+}
+#define SCTP_SB_DECR(sb, decr)				\
+{							\
+	SCTP_SAVE_ATOMIC_DECREMENT(&(sb)->sb_cc, incr);	\
+}
 /* clear the socket buffer state */
 #define SCTP_SB_CLEAR(sb) do { \
 	(sb).sb_cc = 0; \
