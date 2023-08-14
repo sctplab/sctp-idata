@@ -96,13 +96,13 @@ __FBSDID("$FreeBSD$");
 #define SCTP_ASOC_CREATE_LOCK(_inp)
 #define SCTP_ASOC_CREATE_UNLOCK(_inp)
 
-#define SCTP_INP_READ_INIT(_inp)
-#define SCTP_INP_READ_DESTROY(_inp)
+#define SCTP_INP_READ_LOCK_INIT(_inp)
+#define SCTP_INP_READ_LOCK_DESTROY(_inp)
 #define SCTP_INP_READ_LOCK(_inp)
 #define SCTP_INP_READ_UNLOCK(_inp)
+#define SCTP_INP_READ_LOCK_ASSERT(_inp)
 
 /* Lock for TCB */
-
 #define SCTP_TCB_LOCK_INIT(_tcb)
 #define SCTP_TCB_LOCK_DESTROY(_tcb)
 #define SCTP_TCB_LOCK(_tcb)

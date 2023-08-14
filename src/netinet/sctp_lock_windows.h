@@ -198,11 +198,11 @@ extern LARGE_INTEGER zero_timeout;
  * or cookie secrets we lock the INP level.
  */
 
-#define SCTP_INP_READ_INIT(_inp) do { \
+#define SCTP_INP_READ_LOCK_INIT(_inp) do { \
 	spinlock_init(&(_inp)->inp_rdata_lock, "sctp-read", "inpr", 0); \
 } while (0)
 
-#define SCTP_INP_READ_DESTROY(_inp) do { \
+#define SCTP_INP_READ_LOCK_DESTROY(_inp) do { \
 	spinlock_destroy(&(_inp)->inp_rdata_lock); \
 } while (0)
 
@@ -213,6 +213,13 @@ extern LARGE_INTEGER zero_timeout;
 #define SCTP_INP_READ_UNLOCK(_inp) do { \
 	spinlock_release(&(_inp)->inp_rdata_lock); \
 } while (0)
+
+#ifdef INVARIANTS
+#define SCTP_INP_READ_LOCK_ASSERT(_inp) \
+	_ASSERT(KeReadStateMutex(&(_inp)->inp_rdata_lock) == 0)
+#else
+#define SCTP_INP_READ_LOCK_ASSERT(_tcb)
+#endif
 
 
 #define SCTP_INP_LOCK_INIT(_inp) do { \
@@ -310,7 +317,7 @@ extern LARGE_INTEGER zero_timeout;
 
 #ifdef SCTP_LOCK_LOGGING
 #define SCTP_TCB_LOCK(_tcb) do { \
-       	sctp_log_lock((_tcb)->sctp_ep, _tcb, SCTP_LOG_LOCK_TCB); \
+	sctp_log_lock((_tcb)->sctp_ep, _tcb, SCTP_LOG_LOCK_TCB); \
 	spinlock_acquire(&(_tcb)->tcb_lock); \
 } while (0)
 #else
@@ -332,6 +339,13 @@ __inline int _SCTP_TCB_TRYLOCK(struct sctp_tcb *tcb, char *filename, int lineno)
 #define SCTP_TCB_UNLOCK_IFOWNED(_tcb) do { \
 	spinlock_release(&(_tcb)->tcb_lock); \
 } while (0)
+
+#ifdef INVARIANTS
+#define SCTP_TCB_LOCK_ASSERT(_tcb) \
+	_ASSERT(KeReadStateMutex(&(_tcb)->tcb_mtx) == 0)
+#else
+#define SCTP_TCB_LOCK_ASSERT(_tcb)
+#endif
 
 #define SCTP_TCB_INCR_REF(_tcb) do { \
 	atomic_add_int(&(_tcb)->asoc.refcnt, 1); \
@@ -369,13 +383,6 @@ __inline int _SCTP_TCB_TRYLOCK(struct sctp_tcb *tcb, char *filename, int lineno)
 #define SCTP_DECR_TCB_FREE_CHK_COUNT(_tcb) do { \
 	atomic_subtract_int(&(_tcb)->asoc.free_chunk_cnt, 1); \
 } while (0)
-
-#ifdef INVARIANTS
-#define SCTP_TCB_LOCK_ASSERT(_tcb) \
-	_ASSERT(KeReadStateMutex(&(_tcb)->tcb_mtx) == 0)
-#else
-#define SCTP_TCB_LOCK_ASSERT(_tcb)
-#endif
 
 #define SCTP_ITERATOR_LOCK_INIT() do { \
 	spinlock_init(&sctp_it_ctl.it_lock, "sctp-it", "iterator", 0); \
