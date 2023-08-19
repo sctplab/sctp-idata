@@ -32,16 +32,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef __FreeBSD__
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-#endif
-
 #ifndef _NETINET_SCTP_OS_BSD_H_
 #define _NETINET_SCTP_OS_BSD_H_
-/*
- * includes
- */
+
+#include <sys/cdefs.h>
 #include "opt_inet6.h"
 #include "opt_inet.h"
 #include "opt_sctp.h"

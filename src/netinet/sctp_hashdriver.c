@@ -32,13 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef __FreeBSD__
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-#endif
-
 #include <netinet/sctp_os.h>
-
 #include <netinet/sctp_constants.h>
 #ifdef USE_MD5
 #include <crypto/md5.h>
