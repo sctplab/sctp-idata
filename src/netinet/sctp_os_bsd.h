@@ -535,6 +535,14 @@ sctp_get_mbuf_for_msg(unsigned int space_needed,
 
 #define SCTP_IS_LISTENING(inp) ((inp->sctp_flags & SCTP_PCB_FLAGS_ACCEPTING) != 0)
 
+static inline bool
+in_broadcast(struct in_addr in)
+{
+	return (in.s_addr == htonl(INADDR_BROADCAST) ||
+	        in.s_addr == htonl(INADDR_ANY));
+}
+#endif
+
 int	sctp_syscalls_init(void);
 int	sctp_syscalls_uninit(void);
 
